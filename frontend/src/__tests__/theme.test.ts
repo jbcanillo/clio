@@ -44,8 +44,9 @@ describe('theme', () => {
 
 describe('input focus ring', () => {
   it('uses a variable that .dark remaps (not fixed --teal)', async () => {
+    // @ts-ignore node types are not installed; vitest runs under node
     const { readFileSync } = await import('node:fs');
-    const css = readFileSync('src/index.css', 'utf8');
+    const css: string = readFileSync('src/index.css', 'utf8');
     const rule = css.match(/\.input:focus[^{]*\{([^}]*)\}/)![1];
     expect(rule).toContain('var(--border-focus)');
     expect(rule).not.toContain('var(--teal)');
