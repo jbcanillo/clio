@@ -318,3 +318,33 @@ describe('ClioChat sheet focus', () => {
     expect(elsewhere).toHaveFocus();
   });
 });
+
+describe('ClioChat pendingPrompt', () => {
+  it('sends a pending prompt once per id and opens the sheet', async () => {
+    const props = { mode: 'sheet' as const };
+    const { rerender } = renderChat(props);
+    expect(chat.sendMessage).not.toHaveBeenCalled();
+    rerender(<ClioChat scope="chat" placeholder="Talk to Clio" chips={CHIPS} {...props} pendingPrompt={{ id: 'a', text: ' what is up ' }} />);
+    await act(async () => {});
+    expect(chat.sendMessage).toHaveBeenCalledTimes(1);
+    expect(chat.sendMessage.mock.calls[0][0]).toMatchObject({ role: 'user', content: 'what is up' });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    rerender(<ClioChat scope="chat" placeholder="Talk to Clio" chips={CHIPS} {...props} pendingPrompt={{ id: 'a', text: ' what is up ' }} />);
+    await act(async () => {});
+    expect(chat.sendMessage).toHaveBeenCalledTimes(1);
+    rerender(<ClioChat scope="chat" placeholder="Talk to Clio" chips={CHIPS} {...props} pendingPrompt={{ id: 'b', text: 'again' }} />);
+    await act(async () => {});
+    expect(chat.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits until Clio is available', async () => {
+    chat.isAvailable = false;
+    const props = { mode: 'sheet' as const, pendingPrompt: { id: 'a', text: 'hello' } };
+    const { rerender } = renderChat(props);
+    expect(chat.sendMessage).not.toHaveBeenCalled();
+    chat.isAvailable = true;
+    rerender(<ClioChat scope="chat" placeholder="Talk to Clio" chips={CHIPS} {...props} />);
+    await act(async () => {});
+    expect(chat.sendMessage).toHaveBeenCalledTimes(1);
+  });
+});

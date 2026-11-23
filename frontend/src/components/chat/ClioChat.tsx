@@ -20,6 +20,8 @@ export interface ClioChatProps {
   mode: 'full' | 'sheet';
   empty?: ReactNode;
   sheetTitle?: string;
+  /** Send this text once per distinct id (e.g. a page's search-or-ask bar). Waits until Clio is available. */
+  pendingPrompt?: { id: string; text: string };
 }
 
 /**
@@ -51,7 +53,7 @@ function isChatFailure(e: CoreErrorEvent): boolean {
 }
 
 /** Headless Clio chat on top of the nearest ScopedCopilot provider. */
-export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }: ClioChatProps) {
+export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, pendingPrompt }: ClioChatProps) {
   const chat = useCopilotChatInternal();
   const { copilotkit } = useCopilotKit();
   const messages = chat.messages as unknown as ChatMessage[];
@@ -125,6 +127,13 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
     },
     [isAvailable, mode, sendMessage],
   );
+
+  const sentPromptId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingPrompt || sentPromptId.current === pendingPrompt.id || !isAvailable) return;
+    sentPromptId.current = pendingPrompt.id;
+    void send(pendingPrompt.text);
+  }, [pendingPrompt, isAvailable, send]);
 
   const visible = messages.filter(m => m.role === 'user' || m.role === 'assistant');
   const lastUser = [...visible].reverse().find(m => m.role === 'user');
