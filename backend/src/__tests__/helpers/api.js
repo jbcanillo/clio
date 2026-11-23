@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { makeVault } from './vault.js';
+import { createShareSession } from '../../services/shareSession.js';
 
 /** Full app over a temp vault; returns helpers that already carry a valid session token. */
 export async function makeApi(extra = {}) {
@@ -20,7 +21,7 @@ export async function makeApi(extra = {}) {
   const daily = createDailyService({ vault: h.vault });
   const reminders = createReminderService({ vault: h.vault });
   const memory = createPlainVaultMemory({ vault: h.vault });
-  const deps = { auth, settings, daily, reminders, memory, vault: h.vault, config: { timezone: 'UTC' }, ...extra };
+  const deps = { shareSession: createShareSession(), auth, settings, daily, reminders, memory, vault: h.vault, config: { timezone: 'UTC' }, ...extra };
   const app = createApp(deps);
   const { body } = await request(app).post('/api/auth/login').send({ password: 'pw' });
   const token = body.token;

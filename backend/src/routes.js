@@ -7,6 +7,7 @@ import { reminderRouter } from './controllers/reminderController.js';
 import { searchRouter } from './controllers/searchController.js';
 import { analyticsRouter } from './controllers/analyticsController.js';
 import { errorHandler } from './http.js';
+import { buildCopilotEndpoint } from './copilot/runtime.js';
 
 /** Mounts every /api route. Later tasks add their routers below. */
 export function registerRoutes(app, deps) {
@@ -18,6 +19,9 @@ export function registerRoutes(app, deps) {
   if (deps.reminders) api.use(reminderRouter(deps));
   if (deps.memory) api.use(searchRouter(deps));
   if (deps.daily) api.use(analyticsRouter(deps));
+  if (deps.shareSession && deps.settings && deps.memory && deps.daily && deps.reminders) {
+    api.use('/copilotkit', buildCopilotEndpoint(deps));
+  }
   app.use('/api', api);
   app.use(errorHandler);
   return api;
