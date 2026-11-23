@@ -146,9 +146,9 @@ function AppContent() {
       />
       {showInstallModal && <InstallModal onInstall={install} onDismiss={() => setShowInstallModal(false)} />}
 
-      <main className={`min-h-0 flex-1 overflow-y-auto ${activeScope ? 'pb-20' : ''}`}>
+      <main className={`min-h-0 flex-1 ${activeScope === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} ${activeScope ? 'pb-20' : ''}`}>
         {SCOPES.map((scope) => (
-          <div key={scope} hidden={activeScope !== scope}>
+          <div key={scope} hidden={activeScope !== scope} className={scope === 'chat' ? 'h-full min-h-0' : undefined}>
             <ScopedCopilot scope={scope}>{PAGES[scope]}</ScopedCopilot>
           </div>
         ))}
