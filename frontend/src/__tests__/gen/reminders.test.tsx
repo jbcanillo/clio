@@ -65,6 +65,18 @@ describe('ReminderCards interactive', () => {
   });
 });
 
+describe('ReminderCards prop re-sync', () => {
+  it('unchecks a repeating reminder after refetch advances due and done is false', async () => {
+    const onComplete = vi.fn(async () => {});
+    const { rerender } = render(<ReminderCards reminders={[base]} onComplete={onComplete} onSnooze={() => {}} />);
+    const cb = screen.getByRole('checkbox', { name: 'Complete Dentist' });
+    await userEvent.click(cb);
+    expect(cb).toHaveAttribute('aria-checked', 'true');
+    rerender(<ReminderCards reminders={[{ ...base, due: '2099-12-08T09:00:00.000Z', done: false }]} onComplete={onComplete} onSnooze={() => {}} />);
+    expect(screen.getByRole('checkbox', { name: 'Complete Dentist' })).toHaveAttribute('aria-checked', 'false');
+  });
+});
+
 describe('RescheduleSuggestion', () => {
   it('calls Accept and Keep once each', async () => {
     const onAccept = vi.fn();

@@ -102,7 +102,8 @@ function Card({ r, onComplete, onSnooze, onEdit }: Omit<Props, 'reminders' | 'gr
 
 export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, grouped }: Props) {
   if (reminders.length === 0) return <p className="text-sm text-ink-soft">Nothing coming up.</p>;
-  const card = (r: Reminder) => <Card key={r.id} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} />;
+  // Keyed by server-driven fields so a refetch (e.g. a repeating reminder advancing, same id) re-syncs card state.
+  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} />;
   if (!grouped) return <ul className="space-y-2">{reminders.map(card)}</ul>;
   const high = reminders.filter((r) => r.priority === 'high');
   const rest = reminders.filter((r) => r.priority !== 'high');

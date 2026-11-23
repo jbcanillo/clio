@@ -9,6 +9,7 @@ export interface Reminder {
   repeat: Repeat;
   done: boolean;
   snoozedUntil?: string;
+  completedAt?: string;
   notes: string;
 }
 

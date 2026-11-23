@@ -14,6 +14,7 @@ vi.mock('../copilot/ScopedCopilot', async () => {
   };
 });
 vi.mock('../pages/ChatPage', () => ({ default: () => <section aria-label="Chat page" /> }));
+vi.mock('../pages/RemindersPage', () => ({ default: () => <section aria-label="Reminders" /> }));
 vi.mock('../pages/SettingsPage', () => ({ default: () => <section aria-label="Settings page" /> }));
 vi.mock('../components/features/NotificationManager', () => ({ default: () => null }));
 vi.mock('../components/features/BackupRestorePage', () => ({ default: () => <section aria-label="Backup page" /> }));

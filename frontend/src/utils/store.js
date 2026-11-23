@@ -9,7 +9,7 @@ const JOURNAL_KNOWN = new Set(['id', 'text', 'mood', 'createdAt']);
 const pick = (obj, known) => Object.fromEntries(Object.entries(obj).filter(([k]) => !known.has(k)));
 const iso = (v) => new Date(v).toISOString();
 
-function reminderFromApi(r) {
+export function reminderFromApi(r) {
   return {
     ...(r.extras || {}),
     id: r.id,
