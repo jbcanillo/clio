@@ -1,12 +1,24 @@
 import express from 'express';
 import { requireAuth } from './middleware/auth.js';
 import { loginHandler } from './controllers/authController.js';
+import { settingsRouter } from './controllers/settingsController.js';
+import { dailyRouter } from './controllers/dailyController.js';
+import { reminderRouter } from './controllers/reminderController.js';
+import { searchRouter } from './controllers/searchController.js';
+import { analyticsRouter } from './controllers/analyticsController.js';
+import { errorHandler } from './http.js';
 
-/** Mounts every /api route. Later tasks register their routers on `api`. */
+/** Mounts every /api route. Later tasks add their routers below. */
 export function registerRoutes(app, deps) {
   const api = express.Router();
   api.post('/auth/login', loginHandler(deps.auth));
   api.use(requireAuth(deps.auth));
+  if (deps.settings) api.use(settingsRouter(deps));
+  if (deps.daily) api.use(dailyRouter(deps));
+  if (deps.reminders) api.use(reminderRouter(deps));
+  if (deps.memory) api.use(searchRouter(deps));
+  if (deps.daily) api.use(analyticsRouter(deps));
   app.use('/api', api);
+  app.use(errorHandler);
   return api;
 }

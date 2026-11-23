@@ -1,3 +1,4 @@
+import { ValidationError } from '../errors.js';
 import crypto from 'node:crypto';
 
 const PRIORITIES = ['low', 'medium', 'high'];
@@ -13,7 +14,7 @@ function codedError(message, code) {
 
 function parseIso(value, field) {
   const d = new Date(value);
-  if (typeof value !== 'string' || Number.isNaN(d.getTime())) throw new Error(`${field} must be an ISO date-time`);
+  if (typeof value !== 'string' || Number.isNaN(d.getTime())) throw new ValidationError(`${field} must be an ISO date-time`);
   return d;
 }
 
@@ -63,12 +64,12 @@ export function createReminderService({ vault, now = () => new Date() }) {
   }
 
   async function create(input) {
-    if (typeof input?.title !== 'string' || input.title.trim() === '') throw new Error('title must not be empty');
+    if (typeof input?.title !== 'string' || input.title.trim() === '') throw new ValidationError('title must not be empty');
     const due = parseIso(input.due, 'due');
     const priority = input.priority ?? 'medium';
     const repeat = input.repeat ?? 'never';
-    if (!PRIORITIES.includes(priority)) throw new Error('priority must be low, medium or high');
-    if (!REPEATS.includes(repeat)) throw new Error('repeat must be never, daily, weekly, monthly or yearly');
+    if (!PRIORITIES.includes(priority)) throw new ValidationError('priority must be low, medium or high');
+    if (!REPEATS.includes(repeat)) throw new ValidationError('repeat must be never, daily, weekly, monthly or yearly');
     const id = Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
     const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: false };
     await vault.write(pathFor(id), { frontmatter, body: input.notes ? `${input.notes}\n` : '' }, { expectedHash: null });

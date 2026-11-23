@@ -1,3 +1,4 @@
+import { ValidationError } from '../errors.js';
 import { ConflictError } from './vaultService.js';
 import { isValidDateKey, addDaysKey } from './timeUtil.js';
 
@@ -35,14 +36,14 @@ export function createDailyService({ vault }) {
   const get = (date) => vault.read(dailyPath(date));
 
   async function append(date, entry) {
-    if (!isValidDateKey(date)) throw new Error('date must be YYYY-MM-DD');
+    if (!isValidDateKey(date)) throw new ValidationError('date must be YYYY-MM-DD');
     const isMood = entry && entry.mood !== undefined;
     if (isMood) {
-      if (![1, 2, 3, 4, 5].includes(entry.mood)) throw new Error('mood must be an integer 1-5');
-      if (entry.energy !== undefined && ![1, 2, 3, 4, 5].includes(entry.energy)) throw new Error('energy must be an integer 1-5');
+      if (![1, 2, 3, 4, 5].includes(entry.mood)) throw new ValidationError('mood must be an integer 1-5');
+      if (entry.energy !== undefined && ![1, 2, 3, 4, 5].includes(entry.energy)) throw new ValidationError('energy must be an integer 1-5');
     } else {
-      if (!SECTIONS[entry?.section]) throw new Error('section must be thoughts, ideas or events');
-      if (typeof entry.text !== 'string' || entry.text.trim() === '') throw new Error('text must not be empty');
+      if (!SECTIONS[entry?.section]) throw new ValidationError('section must be thoughts, ideas or events');
+      if (typeof entry.text !== 'string' || entry.text.trim() === '') throw new ValidationError('text must not be empty');
     }
 
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -74,10 +75,10 @@ export function createDailyService({ vault }) {
   }
 
   async function moodSeries(from, to) {
-    if (!isValidDateKey(from) || !isValidDateKey(to) || to < from) throw new Error('invalid range');
+    if (!isValidDateKey(from) || !isValidDateKey(to) || to < from) throw new ValidationError('invalid range');
     const out = [];
     for (let d = from, n = 0; d <= to; d = addDaysKey(d, 1), n++) {
-      if (n >= MAX_RANGE_DAYS) throw new Error('range too large (max 366 days)');
+      if (n >= MAX_RANGE_DAYS) throw new ValidationError('range too large (max 366 days)');
       const f = await get(d);
       const m = f?.frontmatter?.mood;
       const e = f?.frontmatter?.energy;

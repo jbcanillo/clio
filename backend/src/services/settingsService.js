@@ -1,3 +1,4 @@
+import { ValidationError } from '../errors.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { encryptString, decryptString } from './cryptoService.js';
@@ -42,13 +43,13 @@ export function createSettingsService({ dataDir, secretKey, envOpenRouterKey, de
   const update = (patch = {}) => {
     const s = load();
     if (patch.timezone !== undefined) {
-      if (!isValidTimezone(patch.timezone)) throw new Error('timezone is not valid');
+      if (!isValidTimezone(patch.timezone)) throw new ValidationError('timezone is not valid');
       s.timezone = patch.timezone;
     }
     if (patch.checkinTimes !== undefined) {
       const { morning, evening } = patch.checkinTimes || {};
       if (!HHMM.test(morning || '') || !HHMM.test(evening || '')) {
-        throw new Error('checkinTimes must be HH:MM (24h) for morning and evening');
+        throw new ValidationError('checkinTimes must be HH:MM (24h) for morning and evening');
       }
       s.checkinTimes = { morning, evening };
     }
