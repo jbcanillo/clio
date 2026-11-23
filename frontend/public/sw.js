@@ -1,12 +1,13 @@
-const CACHE_NAME = 'numdum-cache-v1';
-const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/static/js/', '/static/css/'];
+const CACHE_NAME = 'clio-cache-v2';
+// App shell used only as the offline fallback; it is refreshed on every successful navigation.
+const SHELL = ['/', '/index.html', '/manifest.json'];
 
 let alarmsDB;
 const activeTimers = new Map();
 
 self.addEventListener('install', (event) => {
   console.log('SW install');
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => Promise.all(SHELL.map(u => cache.add(u).catch(() => {})))));
   // Do not skip waiting; let new SW activate on next navigation
 });
 
@@ -14,6 +15,9 @@ self.addEventListener('activate', (event) => {
   console.log('SW activate');
   event.waitUntil(
     (async () => {
+      // Drop caches from older versions (including the pre-Clio 'numdum-cache-v1').
+      const names = await caches.keys();
+      await Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)));
       alarmsDB = await openAlarmsDB();
       const alarms = await getAllAlarms();
       console.log('SW activated, alarms loaded:', alarms.length);
@@ -24,9 +28,35 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // API calls and other origins go straight to the network: offline errors must stay real errors.
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
+  if (req.mode === 'navigate') {
+    // Network first, so a new deployment is never hidden by an old cached page.
+    event.respondWith(
+      fetch(req).then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+        }
+        return res;
+      }).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Hashed build assets never change, so cache them on first use.
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).catch(() => caches.match('/index.html')))
+    caches.match(req).then((cached) => cached || fetch(req).then((res) => {
+      if (res && res.ok && url.pathname.startsWith('/assets/')) {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+      }
+      return res;
+    }))
   );
 });
 

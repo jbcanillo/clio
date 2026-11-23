@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(path.resolve(__dirname, '../../public/sw.js'), 'utf8');
 
-function loadWorker({ clients = [], allClients = [] } = {}) {
+function loadWorker({ clients = [], allClients = [], fetchImpl = () => Promise.resolve(), cache = new Map() } = {}) {
   const handlers = {};
   const shown = [];
   const opened = [];
@@ -17,9 +17,15 @@ function loadWorker({ clients = [], allClients = [] } = {}) {
     },
     skipWaiting: () => {},
   };
-  const sandbox = { self, console: { log() {}, error() {} }, caches: { open: () => Promise.resolve({ addAll: () => Promise.resolve() }) }, indexedDB: {}, setTimeout, clearTimeout, Date, Map, Promise, fetch: () => Promise.resolve() };
+  self.location = { origin: 'https://clio.test' };
+  const cacheApi = {
+    match: (req) => Promise.resolve(cache.get(typeof req === 'string' ? new URL(req, 'https://clio.test').href : req.url)),
+    open: () => Promise.resolve({ addAll: () => Promise.resolve(), add: () => Promise.resolve(), put: (req, res) => { cache.set(typeof req === 'string' ? new URL(req, 'https://clio.test').href : req.url, res); return Promise.resolve(); } }),
+    keys: () => Promise.resolve([]),
+  };
+  const sandbox = { self, URL, console: { log() {}, error() {} }, caches: cacheApi, indexedDB: {}, setTimeout, clearTimeout, Date, Map, Promise, fetch: (...a) => fetchImpl(...a) };
   vm.runInNewContext(source, sandbox); // throws SyntaxError if the file is broken
-  return { handlers, shown, opened };
+  return { handlers, shown, opened, cache };
 }
 const waitFor = () => { const p = []; return { waitUntil: (x) => p.push(x), done: () => Promise.all(p) }; };
 
@@ -73,5 +79,45 @@ describe('public/sw.js', () => {
     handlers.sync({ tag: 'something-else', ...other });
     await other.done();
     expect(posted).toHaveLength(1);
+  });
+
+  describe('fetch strategy', () => {
+    const req = (path, over = {}) => ({ method: 'GET', url: `https://clio.test${path}`, mode: 'cors', ...over });
+    const ok = (body) => ({ ok: true, body, clone() { return this; } });
+    const run = async (handlers, request) => {
+      let responded = false;
+      let promise;
+      handlers.fetch({ request, respondWith: (p) => { responded = true; promise = Promise.resolve(p); } });
+      return { responded, response: responded ? await promise : undefined };
+    };
+
+    it('never touches non-GET requests or /api calls, so offline API errors stay real network errors', async () => {
+      const { handlers } = loadWorker({ fetchImpl: () => Promise.reject(new TypeError('offline')) });
+      expect((await run(handlers, req('/api/sync/notes', { method: 'POST' }))).responded).toBe(false);
+      expect((await run(handlers, req('/api/reminders'))).responded).toBe(false);
+      expect((await run(handlers, { method: 'GET', url: 'https://other.example/x.js', mode: 'cors' })).responded).toBe(false);
+    });
+    it('navigations go to the network first so a new deploy is never hidden by an old cached page', async () => {
+      const cache = new Map([['https://clio.test/index.html', ok('OLD PAGE')]]);
+      const { handlers } = loadWorker({ cache, fetchImpl: () => Promise.resolve(ok('NEW PAGE')) });
+      const { response } = await run(handlers, req('/', { mode: 'navigate' }));
+      expect(response.body).toBe('NEW PAGE');
+      await Promise.resolve();
+      expect(cache.get('https://clio.test/index.html').body).toBe('NEW PAGE');
+    });
+    it('offline navigations fall back to the cached app shell', async () => {
+      const cache = new Map([['https://clio.test/index.html', ok('SHELL')]]);
+      const { handlers } = loadWorker({ cache, fetchImpl: () => Promise.reject(new TypeError('offline')) });
+      expect((await run(handlers, req('/', { mode: 'navigate' }))).response.body).toBe('SHELL');
+    });
+    it('hashed build assets are cached on first use and then served from the cache', async () => {
+      let network = 0;
+      const { handlers, cache } = loadWorker({ fetchImpl: () => { network += 1; return Promise.resolve(ok('JS')); } });
+      expect((await run(handlers, req('/assets/index-abc123.js'))).response.body).toBe('JS');
+      await Promise.resolve();
+      expect(cache.has('https://clio.test/assets/index-abc123.js')).toBe(true);
+      expect((await run(handlers, req('/assets/index-abc123.js'))).response.body).toBe('JS');
+      expect(network).toBe(1);
+    });
   });
 });
