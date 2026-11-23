@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { registerRoutes } from './routes.js';
 
 /**
  * Builds the Express app. Services are passed in through `deps` so tests can
@@ -17,6 +18,8 @@ export function createApp(deps = {}) {
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+  if (deps.auth) registerRoutes(app, deps);
 
   return app;
 }
