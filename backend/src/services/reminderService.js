@@ -5,6 +5,7 @@ const PRIORITIES = ['low', 'medium', 'high'];
 const REPEATS = ['never', 'daily', 'weekly', 'monthly', 'yearly'];
 const DIR = 'Clio/Reminders';
 const ID_RE = /^[a-z0-9]+$/;
+const MAX_EXTRAS_CHARS = 20000;
 
 function codedError(message, code) {
   const e = new Error(message);
@@ -46,6 +47,9 @@ export function createReminderService({ vault, now = () => new Date() }) {
     repeat: f.frontmatter.repeat,
     done: Boolean(f.frontmatter.done),
     ...(f.frontmatter.snoozedUntil ? { snoozedUntil: f.frontmatter.snoozedUntil } : {}),
+    ...(f.frontmatter.completedAt ? { completedAt: f.frontmatter.completedAt } : {}),
+    ...(f.frontmatter.created ? { createdAt: f.frontmatter.created } : {}),
+    extras: f.frontmatter.extras ?? {},
     notes: f.body.trim(),
   });
 
@@ -56,24 +60,35 @@ export function createReminderService({ vault, now = () => new Date() }) {
     return f;
   }
 
-  async function save(f, patch) {
+  async function save(f, patch, body = f.body) {
     const frontmatter = { ...f.frontmatter, ...patch };
-    for (const [k, v] of Object.entries(frontmatter)) if (v === undefined) delete frontmatter[k];
-    await vault.write(f.path, { frontmatter, body: f.body }, { expectedHash: f.hash });
-    return toReminder({ ...f, frontmatter });
+    for (const [k, v] of Object.entries(frontmatter)) if (v === undefined || v === null) delete frontmatter[k];
+    await vault.write(f.path, { frontmatter, body }, { expectedHash: f.hash });
+    return toReminder({ ...f, frontmatter, body });
+  }
+
+  function checkExtras(extras) {
+    if (extras === undefined) return;
+    if (extras === null || typeof extras !== 'object' || Array.isArray(extras)) throw new ValidationError('extras must be an object');
+    if (JSON.stringify(extras).length > MAX_EXTRAS_CHARS) throw new ValidationError('extras is too large');
+  }
+  function checkFields(input) {
+    if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw new ValidationError('priority must be low, medium or high');
+    if (input.repeat !== undefined && !REPEATS.includes(input.repeat)) throw new ValidationError('repeat must be never, daily, weekly, monthly or yearly');
+    checkExtras(input.extras);
   }
 
   async function create(input) {
     if (typeof input?.title !== 'string' || input.title.trim() === '') throw new ValidationError('title must not be empty');
     const due = parseIso(input.due, 'due');
+    checkFields(input);
     const priority = input.priority ?? 'medium';
     const repeat = input.repeat ?? 'never';
-    if (!PRIORITIES.includes(priority)) throw new ValidationError('priority must be low, medium or high');
-    if (!REPEATS.includes(repeat)) throw new ValidationError('repeat must be never, daily, weekly, monthly or yearly');
     const id = Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
-    const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: false };
+    const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: false, created: now().toISOString() };
+    if (input.extras && Object.keys(input.extras).length) frontmatter.extras = input.extras;
     await vault.write(pathFor(id), { frontmatter, body: input.notes ? `${input.notes}\n` : '' }, { expectedHash: null });
-    return { id, title: frontmatter.title, due: frontmatter.due, priority, repeat, done: false, notes: (input.notes || '').trim() };
+    return toReminder({ path: pathFor(id), frontmatter, body: input.notes ? `${input.notes}\n` : '' });
   }
 
   async function list({ from, to, done } = {}) {
@@ -95,10 +110,31 @@ export function createReminderService({ vault, now = () => new Date() }) {
   async function complete(id) {
     const f = await load(id);
     const repeat = f.frontmatter.repeat || 'never';
-    if (repeat === 'never') return save(f, { done: true, snoozedUntil: undefined });
+    if (repeat === 'never') return save(f, { done: true, completedAt: now().toISOString(), snoozedUntil: undefined });
     let next = advance(new Date(f.frontmatter.due), repeat);
     while (next.getTime() <= now().getTime()) next = advance(next, repeat);
     return save(f, { due: next.toISOString(), done: false, snoozedUntil: undefined });
+  }
+
+  async function update(id, patch) {
+    const f = await load(id);
+    checkFields(patch);
+    const changes = {};
+    if (patch.title !== undefined) {
+      if (typeof patch.title !== 'string' || patch.title.trim() === '') throw new ValidationError('title must not be empty');
+      changes.title = patch.title.trim();
+    }
+    if (patch.due !== undefined) changes.due = parseIso(patch.due, 'due').toISOString();
+    if (patch.priority !== undefined) changes.priority = patch.priority;
+    if (patch.repeat !== undefined) changes.repeat = patch.repeat;
+    if (patch.extras !== undefined) changes.extras = Object.keys(patch.extras).length ? patch.extras : undefined;
+    if (patch.snoozedUntil !== undefined) changes.snoozedUntil = patch.snoozedUntil === null ? undefined : parseIso(patch.snoozedUntil, 'snoozedUntil').toISOString();
+    if (patch.done !== undefined) {
+      changes.done = Boolean(patch.done);
+      changes.completedAt = patch.done ? f.frontmatter.completedAt ?? now().toISOString() : undefined;
+    }
+    const body = patch.notes !== undefined ? (patch.notes ? `${patch.notes}\n` : '') : f.body;
+    return save(f, changes, body);
   }
 
   async function snooze(id, untilIso) {
@@ -112,5 +148,5 @@ export function createReminderService({ vault, now = () => new Date() }) {
     await vault.remove(f.path, { expectedHash: f.hash });
   }
 
-  return { create, list, complete, snooze, remove };
+  return { create, list, update, complete, snooze, remove };
 }

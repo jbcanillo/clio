@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import remindersDB from '../../utils/db';
-import { createJournalEntry, deleteAllJournalEntries } from '../../utils/db';
+import remindersDB from '../../utils/store';
+import { createJournalEntry, deleteAllJournalEntries } from '../../utils/store';
 import { downloadBackup, restoreFromFile } from '../../utils/backupRestore';
 import { useReminders } from '../../hooks/useReminders';
 import { useJournal } from '../../hooks/useJournal';

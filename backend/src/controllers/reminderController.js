@@ -8,6 +8,17 @@ const create = z.object({
   priority: z.enum(['low', 'medium', 'high']).optional(),
   repeat: z.enum(['never', 'daily', 'weekly', 'monthly', 'yearly']).optional(),
   notes: z.string().max(10000).optional(),
+  extras: z.record(z.unknown()).optional(),
+}).strict();
+const patch = z.object({
+  title: z.string().trim().min(1).max(300).optional(),
+  due: z.string().datetime({ offset: true }).optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  repeat: z.enum(['never', 'daily', 'weekly', 'monthly', 'yearly']).optional(),
+  notes: z.string().max(10000).optional(),
+  extras: z.record(z.unknown()).optional(),
+  done: z.boolean().optional(),
+  snoozedUntil: z.string().datetime({ offset: true }).nullable().optional(),
 }).strict();
 const query = z.object({
   from: z.string().datetime({ offset: true }).optional(),
@@ -27,6 +38,7 @@ export function reminderRouter({ reminders, memory }) {
     await memory?.reindex();
     res.status(201).json(created);
   }));
+  r.put('/reminders/:id', wrap(async (req, res) => res.json(await reminders.update(req.params.id, parse(patch, req.body)))));
   r.post('/reminders/:id/complete', wrap(async (req, res) => res.json(await reminders.complete(req.params.id))));
   r.post('/reminders/:id/snooze', wrap(async (req, res) => res.json(await reminders.snooze(req.params.id, parse(snooze, req.body).until))));
   r.delete('/reminders/:id', wrap(async (req, res) => {

@@ -20,6 +20,7 @@ export function errorHandler(err, _req, res, _next) {
   if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'too_large' });
   if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: 'invalid_json' });
   if (err?.code === 'not_found') return res.status(404).json({ error: 'not_found' });
+  if (err?.code === 'conflict') return res.status(409).json({ error: 'conflict' });
   if (err?.code === 'parse_error') return res.status(409).json({ error: 'parse_error', message: err.message });
   if (err instanceof ConflictError) return res.status(409).json({ error: 'conflict' });
   if (err instanceof PathError) return res.status(400).json({ error: 'invalid_path' });

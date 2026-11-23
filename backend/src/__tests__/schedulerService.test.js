@@ -95,3 +95,57 @@ describe('scheduler.tick', () => {
     expect(await sched.tick()).toBe('sent');
   });
 });
+
+describe('scheduler.tickReminders', () => {
+  function remSetup(list, start = '2026-12-01T09:00:00Z') {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clio-rem-'));
+    const clock = { t: new Date(start) };
+    const pushes = [];
+    let delivered = 1;
+    const push = { sendToAll: async (p) => { pushes.push(p); return { sent: delivered, removed: 0 }; } };
+    const reminders = { list: async ({ done } = {}) => list.filter((r) => done === undefined || r.done === done) };
+    const settings = { getPublic: () => ({ timezone: 'UTC', checkinTimes: { morning: '09:00', evening: '20:30' } }) };
+    const make = () => createScheduler({ settings, daily: { hasEntry: async () => true }, push, reminders, dataDir, now: () => clock.t });
+    return { make, sched: make(), clock, pushes, list, setDelivered: (n) => { delivered = n; } };
+  }
+  const rem = (over = {}) => ({ id: 'r1', title: 'Dentist', due: '2026-12-01T09:00:00.000Z', priority: 'high', repeat: 'never', done: false, notes: '', extras: {}, ...over });
+
+  it('notifies once when a reminder becomes due, and never twice for the same due time', async () => {
+    const s = remSetup([rem({ due: '2026-12-01T09:30:00.000Z' })]);
+    expect(await s.sched.tickReminders()).toBe(0);
+    s.clock.t = new Date('2026-12-01T09:30:00Z');
+    expect(await s.sched.tickReminders()).toBe(1);
+    s.clock.t = new Date('2026-12-01T09:31:00Z');
+    expect(await s.sched.tickReminders()).toBe(0);
+    expect(s.pushes).toEqual([expect.objectContaining({ title: 'Dentist', url: '/#/list' })]);
+  });
+  it('ignores done reminders and respects a snooze until its time', async () => {
+    const s = remSetup([rem({ id: 'a', done: true }), rem({ id: 'b', snoozedUntil: '2026-12-01T10:00:00.000Z' })]);
+    expect(await s.sched.tickReminders()).toBe(0);
+    s.clock.t = new Date('2026-12-01T10:00:00Z');
+    expect(await s.sched.tickReminders()).toBe(1);
+  });
+  it('a repeating reminder notifies again after it moved to its next due time', async () => {
+    const s = remSetup([rem({ repeat: 'daily' })]);
+    expect(await s.sched.tickReminders()).toBe(1);
+    s.list[0] = rem({ repeat: 'daily', due: '2026-12-02T09:00:00.000Z' });
+    s.clock.t = new Date('2026-12-02T09:00:00Z');
+    expect(await s.sched.tickReminders()).toBe(1);
+  });
+  it('does not mark a reminder as notified when nobody received the push', async () => {
+    const s = remSetup([rem()]);
+    s.setDelivered(0);
+    expect(await s.sched.tickReminders()).toBe(0);
+    s.setDelivered(1);
+    expect(await s.sched.tickReminders()).toBe(1);
+  });
+  it('remembers notified reminders across a restart', async () => {
+    const s = remSetup([rem()]);
+    await s.sched.tickReminders();
+    expect(await s.make().tickReminders()).toBe(0);
+  });
+  it('does not announce a reminder that was already long overdue when the app first saw it (older than 24 h)', async () => {
+    const s = remSetup([rem({ due: '2026-11-20T09:00:00.000Z' })]);
+    expect(await s.sched.tickReminders()).toBe(0);
+  });
+});

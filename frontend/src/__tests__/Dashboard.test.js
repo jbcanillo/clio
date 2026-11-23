@@ -44,7 +44,7 @@ vi.mock('../hooks/useAnalytics', () => ({
   })
 }));
 
-vi.mock('../utils/db', () => ({
+vi.mock('../utils/store', () => ({
   deleteAllReminders: jest.fn(),
   deleteAllJournalEntries: jest.fn(),
   createReminder: jest.fn(),

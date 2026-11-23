@@ -20,7 +20,7 @@ const toMinutes = (hhmm) => {
 };
 
 /** Daily "write something" nudges: morning and (if still empty) evening, in the owner's timezone. */
-export function createScheduler({ settings, daily, push, now = () => new Date(), dataDir, logger = console }) {
+export function createScheduler({ settings, daily, push, reminders, now = () => new Date(), dataDir, logger = console }) {
   const file = path.join(dataDir, 'checkin-state.json');
   fs.mkdirSync(dataDir, { recursive: true });
   let task = null;
@@ -29,7 +29,7 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     try {
       return JSON.parse(fs.readFileSync(file, 'utf8'));
     } catch {
-      return { sent: {}, snoozed: {} };
+      return { sent: {}, snoozed: {}, notified: {} };
     }
   };
   const save = (state) => {
@@ -37,6 +37,8 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     for (const k of ['sent', 'snoozed']) {
       for (const d of Object.keys(state[k]).sort().slice(0, -7)) delete state[k][d];
     }
+    const ids = Object.keys(state.notified ?? {});
+    for (const id of ids.slice(0, Math.max(0, ids.length - 2000))) delete state.notified[id];
     const tmp = `${file}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(state));
     fs.renameSync(tmp, file);
@@ -46,6 +48,7 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     const { timezone, checkinTimes } = settings.getPublic();
     const date = todayKey(now(), timezone);
     const state = load();
+    state.notified ??= {};
     if (state.snoozed[date]) return 'skipped';
 
     const minutes = localMinutes(now(), timezone);
@@ -62,9 +65,33 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     return 'sent';
   }
 
+  const STALE_MS = 24 * 3600 * 1000;
+
+  /** Pushes a notification for every reminder that has just become due. Returns how many were sent. */
+  async function tickReminders() {
+    if (!reminders) return 0;
+    const state = load();
+    state.notified ??= {};
+    const nowMs = now().getTime();
+    let count = 0;
+    for (const r of await reminders.list({ done: false })) {
+      const effective = r.snoozedUntil ?? r.due;
+      const at = new Date(effective).getTime();
+      const key = `${r.due}|${r.snoozedUntil ?? ''}`;
+      if (at > nowMs || nowMs - at > STALE_MS || state.notified[r.id] === key) continue;
+      const { sent } = await push.sendToAll({ title: r.title, body: r.notes ? r.notes.slice(0, 120) : 'Reminder is due', url: '/#/list' });
+      if (sent === 0) continue;
+      state.notified[r.id] = key;
+      count += 1;
+    }
+    if (count) save(state);
+    return count;
+  }
+
   async function snoozeToday() {
     const state = load();
     state.snoozed[todayKey(now(), settings.getPublic().timezone)] = true;
+    state.notified ??= {};
     save(state);
   }
 
@@ -72,6 +99,7 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     if (task) return;
     task = cron.schedule('* * * * *', () => {
       tick().catch((e) => logger.error?.(`check-in tick failed: ${e.message}`));
+      tickReminders().catch((e) => logger.error?.(`reminder tick failed: ${e.message}`));
     });
   }
   function stop() {
@@ -79,5 +107,5 @@ export function createScheduler({ settings, daily, push, now = () => new Date(),
     task = null;
   }
 
-  return { tick, start, stop, snoozeToday };
+  return { tick, tickReminders, start, stop, snoozeToday };
 }

@@ -22,7 +22,7 @@ const mockUseAnalytics = {
 const mockOnOpenBackup = jest.fn();
 const mockOnOpenRestore = jest.fn();
 
-vi.mock('../utils/db', () => ({
+vi.mock('../utils/store', () => ({
   deleteAllReminders: jest.fn(),
   deleteAllJournalEntries: jest.fn(),
   createReminder: jest.fn(),

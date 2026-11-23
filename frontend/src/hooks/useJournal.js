@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllJournalEntries, createJournalEntry, updateJournalEntry, deleteJournalEntry } from '../utils/db';
+import { getAllJournalEntries, createJournalEntry, updateJournalEntry, deleteJournalEntry } from '../utils/store';
 
 export const useJournal = () => {
   const [entries, setEntries] = useState([]);

@@ -68,3 +68,37 @@ describe('reminderService', () => {
     await expect(svc.complete('../Daily/2026-01-01')).rejects.toMatchObject({ code: 'not_found' });
   });
 });
+
+describe('reminderService: update, extras, timestamps', () => {
+  let h2, svc2, now2;
+  beforeEach(() => { h2 = makeVault(); now2 = new Date('2026-01-01T10:00:00Z'); svc2 = createReminderService({ vault: h2.vault, now: () => now2 }); });
+  const base2 = { title: 'Dentist', due: '2026-01-01T09:00:00Z' };
+
+  it('keeps arbitrary extras and a created timestamp', async () => {
+    const r = await svc2.create({ ...base2, extras: { checklist: [{ t: 'bring card', done: false }], contact: 'Dr. Ana' } });
+    expect(r.extras).toEqual({ checklist: [{ t: 'bring card', done: false }], contact: 'Dr. Ana' });
+    expect(r.createdAt).toBe('2026-01-01T10:00:00.000Z');
+    expect((await svc2.list())[0].extras.contact).toBe('Dr. Ana');
+  });
+  it('rejects extras that are not an object or are too large', async () => {
+    await expect(svc2.create({ ...base2, extras: 'x' })).rejects.toThrow(/extras/);
+    await expect(svc2.create({ ...base2, extras: { big: 'x'.repeat(30000) } })).rejects.toThrow(/extras/);
+  });
+  it('completing a one-off sets completedAt; reopening via update clears it', async () => {
+    const r = await svc2.create(base2);
+    const done = await svc2.complete(r.id);
+    expect(done).toMatchObject({ done: true, completedAt: '2026-01-01T10:00:00.000Z' });
+    const reopened = await svc2.update(r.id, { done: false });
+    expect(reopened.done).toBe(false);
+    expect(reopened.completedAt).toBeUndefined();
+  });
+  it('update changes fields, notes and extras and validates them', async () => {
+    const r = await svc2.create(base2);
+    const u = await svc2.update(r.id, { title: 'Dentist (moved)', due: '2026-01-02T09:00:00Z', priority: 'high', notes: 'bring card', extras: { a: 1 }, snoozedUntil: '2026-01-01T12:00:00Z' });
+    expect(u).toMatchObject({ title: 'Dentist (moved)', due: '2026-01-02T09:00:00.000Z', priority: 'high', notes: 'bring card', extras: { a: 1 }, snoozedUntil: '2026-01-01T12:00:00.000Z' });
+    await expect(svc2.update(r.id, { title: ' ' })).rejects.toThrow(/title/);
+    await expect(svc2.update(r.id, { priority: 'urgent' })).rejects.toThrow(/priority/);
+    expect((await svc2.update(r.id, { snoozedUntil: null })).snoozedUntil).toBeUndefined();
+    await expect(svc2.update('nope', { title: 'x' })).rejects.toMatchObject({ code: 'not_found' });
+  });
+});
