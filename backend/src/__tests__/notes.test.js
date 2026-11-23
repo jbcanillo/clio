@@ -1,3 +1,6 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import request from 'supertest';
 import { makeApi } from './helpers/api.js';
 
@@ -104,5 +107,16 @@ describe('PATCH /api/notes/checklist', () => {
     const { as } = await setup();
     const res = await as('patch', '/api/notes/checklist').send({ path: 'Clio/Notes/nope.md', index: 0, checked: true, baseHash: 'a'.repeat(64) });
     expect(res.status).toBe(404);
+  });
+
+  it('refuses a note with unparseable frontmatter and leaves it untouched', async () => {
+    const { as, h, deps } = await setup();
+    const raw = '---\ntitle: [unclosed\n bad: : :\n---\n- [ ] a\n';
+    h.writeRaw(P, raw);
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 0, checked: true, baseHash: hash });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('parse_error');
+    expect(fs.readFileSync(path.join(h.root, P), 'utf8')).toBe(raw);
   });
 });

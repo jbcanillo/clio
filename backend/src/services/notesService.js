@@ -55,6 +55,7 @@ export function createNotesService({ vault }) {
     }
     const current = await vault.read(path);
     if (!current) throw Object.assign(new Error('Note not found'), { code: 'not_found' });
+    if (current.parseError) throw Object.assign(new Error('Note has unreadable frontmatter; fix it in Obsidian first'), { code: 'parse_error' });
     if (current.hash !== baseHash) throw new ConflictError(current);
     const parts = current.body.split(/(\r?\n)/); // keep separators so every other byte survives
     let n = 0;
