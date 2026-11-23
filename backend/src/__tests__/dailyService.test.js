@@ -73,4 +73,30 @@ describe('dailyService', () => {
   it('moodSeries rejects ranges over 366 days', async () => {
     await expect(daily.moodSeries('2024-01-01', '2026-01-01')).rejects.toThrow(/range/);
   });
+  it('rangeSummaries summarises mood, section counts and headline; empty days have hasEntry:false', async () => {
+    await daily.append('2026-11-22', { mood: 4 });
+    await daily.append('2026-11-22', { section: 'events', text: 'Dentist at 9' });
+    await daily.append('2026-11-22', { section: 'events', text: 'Lunch' });
+    await daily.append('2026-11-22', { section: 'thoughts', text: 'Felt calm' });
+    expect(await daily.rangeSummaries('2026-11-22', '2026-11-23')).toEqual([
+      { date: '2026-11-22', mood: 4, energy: null, headline: 'Dentist at 9', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 2 } },
+      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } },
+    ]);
+  });
+  it('rangeSummaries truncates the headline to 120 chars', async () => {
+    await daily.append(D, { section: 'ideas', text: 'x'.repeat(200) });
+    const [s] = await daily.rangeSummaries(D, D);
+    expect(s.headline).toBe('x'.repeat(120));
+  });
+  it('rangeSummaries reports a note with unreadable frontmatter as an empty day instead of throwing', async () => {
+    h.writeRaw(`Clio/Daily/${D}.md`, '---\n: bad: [yaml\n---\n## Thoughts\n- mine\n');
+    await daily.append('2026-11-24', { mood: 2 });
+    const out = await daily.rangeSummaries(D, '2026-11-24');
+    expect(out[0]).toEqual({ date: D, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } });
+    expect(out[1]).toMatchObject({ date: '2026-11-24', mood: 2, hasEntry: true });
+  });
+  it('rangeSummaries rejects 367 days and reversed ranges', async () => {
+    await expect(daily.rangeSummaries('2026-01-01', '2027-01-02')).rejects.toThrow(/range/);
+    await expect(daily.rangeSummaries('2026-11-23', '2026-11-22')).rejects.toThrow(/range/);
+  });
 });
