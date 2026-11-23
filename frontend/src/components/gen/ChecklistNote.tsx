@@ -20,9 +20,18 @@ export function ChecklistNote({ note, onToggle, onOpen, onConflict }: Props) {
   const inFlight = useRef(new Set<number>());
   const [msg, setMsg] = useState<Msg>(null);
 
+  // Re-sync only when the server's view of the checklist changes, not on object identity.
+  const signature = JSON.stringify(note.checklist.map((c) => [c.index, c.text, c.done]));
+  const prevSignature = useRef(signature);
   useEffect(() => {
-    setOverrides({});
-  }, [note]);
+    if (prevSignature.current === signature) return;
+    prevSignature.current = signature;
+    setOverrides((o) => {
+      const kept: Record<number, boolean> = {};
+      for (const k of Object.keys(o)) if (inFlight.current.has(Number(k))) kept[Number(k)] = o[Number(k)];
+      return kept;
+    });
+  }, [signature]);
 
   const doneOf = (index: number, done: boolean) => (index in overrides ? overrides[index] : done);
   const total = note.checklist.length;

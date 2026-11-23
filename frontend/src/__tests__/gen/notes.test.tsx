@@ -68,4 +68,44 @@ describe('ChecklistNote', () => {
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getAllByText(/<img src=x/).length).toBeGreaterThanOrEqual(3);
   });
+
+  const cl = (m: boolean, e: boolean) => [{ index: 0, text: 'Milk', done: m }, { index: 1, text: 'Eggs', done: e }];
+  const state = (n: string) => screen.getByRole('checkbox', { name: n }).getAttribute('aria-checked');
+
+  it('hash-only rerender after a successful toggle keeps the row toggled', async () => {
+    const { rerender } = render(<ChecklistNote note={note()} onToggle={async () => {}} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Eggs' }));
+    rerender(<ChecklistNote note={note({ hash: 'h2' })} onToggle={async () => {}} />);
+    expect(state('Eggs')).toBe('true');
+  });
+  it('changed checklist from parent shows the prop value', async () => {
+    const { rerender } = render(<ChecklistNote note={note()} onToggle={async () => {}} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Eggs' }));
+    rerender(<ChecklistNote note={note({ hash: 'h2', checklist: cl(true, true) })} onToggle={async () => {}} />);
+    await waitFor(() => expect(state('Eggs')).toBe('true'));
+    // override cleared: a later prop flip to false is honoured
+    rerender(<ChecklistNote note={note({ hash: 'h3', checklist: cl(true, false) })} onToggle={async () => {}} />);
+    await waitFor(() => expect(state('Eggs')).toBe('false'));
+  });
+  it('after a 409, a refetched different checklist shows the new server value', async () => {
+    const f = () => Promise.reject(new ApiError(409, 'conflict'));
+    const { rerender } = render(<ChecklistNote note={note()} onToggle={f} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Eggs' }));
+    await screen.findByRole('status');
+    rerender(<ChecklistNote note={note({ hash: 'h2', checklist: cl(false, true) })} onToggle={f} />);
+    await waitFor(() => expect(state('Eggs')).toBe('true'));
+    expect(state('Milk')).toBe('false');
+  });
+  it('two rows toggled concurrently both settle', async () => {
+    const resolvers: Array<() => void> = [];
+    const onToggle = vi.fn(() => new Promise<void>((res) => { resolvers.push(res); }));
+    render(<ChecklistNote note={note()} onToggle={onToggle} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Eggs' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Milk' }));
+    expect(onToggle).toHaveBeenCalledTimes(2);
+    resolvers.forEach((r) => r());
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Eggs' })).not.toHaveAttribute('aria-disabled'));
+    expect(state('Eggs')).toBe('true');
+    expect(state('Milk')).toBe('false');
+  });
 });
