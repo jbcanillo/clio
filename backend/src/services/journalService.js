@@ -39,18 +39,24 @@ export function createJournalService({ vault, now = () => new Date(), newId = ()
     return (await all()).map(toEntry).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  async function create({ id, text, mood, createdAt, extras }) {
+  async function create({ id, text, mood, createdAt, extras }, { assumeUnique = false } = {}) {
     if (typeof text !== 'string' || text.trim() === '') throw new ValidationError('text must not be empty');
     const entryId = id === undefined ? newId() : id;
     if (typeof entryId !== 'string' || !ID_RE.test(entryId)) throw new ValidationError('id must be 1-64 letters, digits, - or _');
     const created = createdAt ? new Date(createdAt) : now();
     if (Number.isNaN(created.getTime())) throw new ValidationError('createdAt must be a date');
-    if ((await all()).some((x) => x.frontmatter.id === entryId)) throw coded('Entry already exists', 'conflict');
+    // The bulk import passes assumeUnique and relies on the file path (date + id) to detect repeats.
+    if (!assumeUnique && (await all()).some((x) => x.frontmatter.id === entryId)) throw coded('Entry already exists', 'conflict');
     const frontmatter = { kind: 'journal', private: true, id: entryId, createdAt: created.toISOString() };
     if (mood !== undefined && mood !== null) frontmatter.mood = mood;
     if (extras && Object.keys(extras).length) frontmatter.extras = extras;
     const p = `${DIR}/${frontmatter.createdAt.slice(0, 10)}-${entryId}.md`;
-    await vault.write(p, { frontmatter, body: `${text.trim()}\n` }, { expectedHash: null });
+    try {
+      await vault.write(p, { frontmatter, body: `${text.trim()}\n` }, { expectedHash: null });
+    } catch (e) {
+      if (e instanceof ConflictError) throw coded('Entry already exists', 'conflict');
+      throw e;
+    }
     return toEntry({ frontmatter, body: text });
   }
 

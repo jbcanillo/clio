@@ -85,7 +85,10 @@ export function createReminderService({ vault, now = () => new Date() }) {
     const priority = input.priority ?? 'medium';
     const repeat = input.repeat ?? 'never';
     const id = Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
-    const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: false, created: now().toISOString() };
+    // done / completedAt / createdAt are only honoured when set programmatically (the legacy import).
+    const created = input.createdAt && !Number.isNaN(new Date(input.createdAt).getTime()) ? new Date(input.createdAt) : now();
+    const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: Boolean(input.done), created: created.toISOString() };
+    if (input.done && input.completedAt && !Number.isNaN(new Date(input.completedAt).getTime())) frontmatter.completedAt = new Date(input.completedAt).toISOString();
     if (input.extras && Object.keys(input.extras).length) frontmatter.extras = input.extras;
     await vault.write(pathFor(id), { frontmatter, body: input.notes ? `${input.notes}\n` : '' }, { expectedHash: null });
     return toReminder({ path: pathFor(id), frontmatter, body: input.notes ? `${input.notes}\n` : '' });

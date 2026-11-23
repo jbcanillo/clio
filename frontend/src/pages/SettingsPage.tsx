@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { apiFetch } from '../lib/api';
+import { ImportLegacy } from '../components/features/ImportLegacy';
 import { registerPush } from '../lib/push';
 
 interface Settings {
@@ -82,6 +83,7 @@ export default function SettingsPage() {
 
       <button className="btn btn-primary" type="submit">Save settings</button>
       {message && <p role="status" className="text-sm">{message}</p>}
+      <ImportLegacy />
     </form>
   );
 }
