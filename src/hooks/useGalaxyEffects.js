@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 /**
- * Custom hook to add galaxy-themed interactive effects to the Numdum app
+ * Custom hook to add galaxy-themed interactive effects to the Clio app
  */
 const useGalaxyEffects = () => {
   useEffect(() => {

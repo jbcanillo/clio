@@ -139,7 +139,7 @@ describe('Backup/Restore Utilities', () => {
     test('uses default filename if none provided', () => {
       downloadBackup(testData, password);
       const link = document.createElement.mock.results[0].value;
-      expect(link.download).toBe('backup-numdum.json.enc');
+      expect(link.download).toBe('backup-clio.json.enc');
     });
   });
 

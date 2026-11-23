@@ -42,9 +42,9 @@ export const decryptData = (encryptedString, password) => {
  * Trigger a download of encrypted backup file.
  * @param {Object} backupData - The data to backup (usually reminders + journal entries)
  * @param {string} password - Encryption password
- * @param {string} [filename='backup-numdum.json.enc'] - File name
+ * @param {string} [filename='backup-clio.json.enc'] - File name
  */
-export const downloadBackup = (backupData, password, filename = 'backup-numdum.json.enc') => {
+export const downloadBackup = (backupData, password, filename = 'backup-clio.json.enc') => {
   const encrypted = encryptData(backupData, password);
   const blob = new Blob([encrypted], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);

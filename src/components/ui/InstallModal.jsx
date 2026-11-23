@@ -7,9 +7,9 @@ const InstallModal = ({ onInstall, onDismiss }) => {
         <div className="flex items-start gap-3">
           <div className="text-2xl">📖</div>
           <div className="flex-1">
-            <h3 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Install Numdum</h3>
+            <h3 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Install Clio</h3>
             <p className="text-sm mb-3" style={{ color: 'var(--text-tertiary)' }}>
-              Add Numdum to your home screen for quick access, even offline.
+              Add Clio to your home screen for quick access, even offline.
             </p>
             <div className="flex gap-2">
               <button onClick={onInstall} className="btn btn-primary btn-sm">

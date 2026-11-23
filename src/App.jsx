@@ -259,7 +259,7 @@ function AppContent() {
                 letterSpacing: '-0.03em',
                 position: 'relative'
               }}>
-              Numdum
+              Clio
               <span className="absolute inset-0" style={{
                 background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6)',
                 backgroundSize: '200% 200%',
