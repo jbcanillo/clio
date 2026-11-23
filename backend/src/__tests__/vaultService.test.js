@@ -99,3 +99,13 @@ describe('vaultService list/remove/uniquePath', () => {
     expect(await vault.uniquePath('Clio/Notes', '☕☕')).toBe('Clio/Notes/untitled.md');
   });
 });
+
+describe('vault parse cache', () => {
+  it('reports parseError on every read of the same broken frontmatter', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clio-pc-'));
+    fs.writeFileSync(path.join(root, 'a.md'), '---\ntitle: [unclosed\n bad: : :\n---\nx\n');
+    const vault = createVaultService({ vaultDir: root });
+    expect((await vault.read('a.md')).parseError).toBe(true);
+    expect((await vault.read('a.md')).parseError).toBe(true);
+  });
+});

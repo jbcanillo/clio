@@ -113,6 +113,7 @@ describe('PATCH /api/notes/checklist', () => {
     const { as, h, deps } = await setup();
     const raw = '---\ntitle: [unclosed\n bad: : :\n---\n- [ ] a\n';
     h.writeRaw(P, raw);
+    await as('get', '/api/notes'); // list() reads the note first, as the UI does
     const hash = crypto.createHash('sha256').update(raw).digest('hex');
     const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 0, checked: true, baseHash: hash });
     expect(res.status).toBe(409);

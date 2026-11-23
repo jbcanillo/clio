@@ -40,7 +40,7 @@ export function createVaultService({ vaultDir }) {
     const hash = sha256(raw);
     const text = raw.toString('utf8');
     try {
-      const { data, content } = matter(text);
+      const { data, content } = matter(text, {});
       return { path: relPath, frontmatter: data, body: content, hash };
     } catch {
       return { path: relPath, frontmatter: {}, body: text, hash, parseError: true };
