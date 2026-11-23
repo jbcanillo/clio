@@ -73,7 +73,7 @@ export default function ChatPage() {
       </div>
       {showNote && <div className="px-2 pb-2"><QuickNote onSave={saveNote} /></div>}
       <ConflictList conflicts={conflicts} onResolved={resolved} />
-      <ClioActions shareOn={shareOn} timezone={timezone ?? 'UTC'} />
+      <ClioActions scope="chat" shareOn={shareOn} timezone={timezone ?? 'UTC'} />
       {checkin && timezone && (
         <div className="px-2 pb-2">
           <CheckinForm onSubmit={submit} onSkip={skip} />

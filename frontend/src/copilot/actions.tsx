@@ -8,8 +8,9 @@ import { NotePreview } from '../components/gen/NotePreview';
 import { ReminderCards } from '../components/gen/ReminderCards';
 import { SearchResults } from '../components/gen/SearchResults';
 import { apiFetch } from '../lib/api';
+import { completeReminder, listReminders, snoozeReminder } from '../lib/clioApi';
 import { addDays, todayIn } from '../lib/today';
-import type { Hit, MoodPoint, Reminder } from '../lib/types';
+import type { Hit, MoodPoint, Reminder, Scope } from '../lib/types';
 
 const quiet = (text: string) => <p className="text-sm opacity-70">{text}</p>;
 
@@ -19,13 +20,13 @@ const quiet = (text: string) => <p className="text-sm opacity-70">{text}</p>;
  */
 function LiveReminders() {
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
-  useEffect(() => { apiFetch<Reminder[]>('/api/reminders?done=false').then(setReminders).catch(() => setReminders([])); }, []);
+  useEffect(() => { listReminders({ done: false }).then(setReminders).catch(() => setReminders([])); }, []);
   if (!reminders) return quiet('Looking up remindersâ€¦');
   return (
     <ReminderCards
       reminders={reminders}
-      onComplete={(id) => { void apiFetch(`/api/reminders/${id}/complete`, { method: 'POST' }); }}
-      onSnooze={(id, until) => { void apiFetch(`/api/reminders/${id}/snooze`, { method: 'POST', json: { until } }); }}
+      onComplete={async (id) => { await completeReminder(id); }}
+      onSnooze={async (id, until) => { await snoozeReminder(id, until); }}
     />
   );
 }
@@ -52,7 +53,7 @@ function LiveSearch({ query, includePrivate }: { query: string; includePrivate: 
 function DeleteReminderConfirm({ id, respond }: { id: string; respond?: (answer: string) => void }) {
   const [state, setState] = useState<{ title: string } | 'missing' | null>(null);
   useEffect(() => {
-    apiFetch<Reminder[]>('/api/reminders').then((all) => {
+    listReminders().then((all) => {
       const found = all.find((r) => r.id === id);
       setState(found ? { title: found.title } : 'missing');
     }).catch(() => setState('missing'));
@@ -92,31 +93,32 @@ export async function saveCheckin(date: string, v: CheckinValues): Promise<void>
   }
 }
 
-/** Registers what Clio can show in chat and what the app tells Clio about the screen. */
-export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone: string }) {
-  const location = useLocation();
-  useCopilotReadable({
-    description: 'Current date and the screen the owner is looking at',
-    value: { today: todayIn(timezone), timezone, route: location.pathname },
-  });
+type ActionProps = { timezone: string; shareOn: boolean };
 
+function ShowReminders() {
   useCopilotAction({
     name: 'show_reminders',
     description: "Show the owner's upcoming (not done) reminders as cards.",
     parameters: [],
     handler: async () => 'Showing the reminders to the owner.',
-    render: ({ status }) => (status === 'complete' ? <LiveReminders /> : quiet('Looking up remindersâ€¦')),
+    render: ({ status }) => (status === 'complete' ? <LiveReminders /> : quiet('Looking up reminders…')),
   });
+  return null;
+}
 
+function ShowMoodChart({ timezone }: ActionProps) {
   useCopilotAction({
     name: 'show_mood_chart',
     description: "Show a chart of the owner's mood for the last N days (default 14).",
     parameters: [{ name: 'days', type: 'number', description: 'How many days back', required: false }],
     handler: async () => 'Showing the mood chart to the owner.',
     render: ({ status, args }) =>
-      status === 'complete' ? <LiveMood days={typeof args.days === 'number' ? args.days : undefined} timezone={timezone} /> : quiet('Loading moodâ€¦'),
+      status === 'complete' ? <LiveMood days={typeof args.days === 'number' ? args.days : undefined} timezone={timezone} /> : quiet('Loading mood…'),
   });
+  return null;
+}
 
+function ShowSearchResults({ shareOn }: ActionProps) {
   useCopilotAction({
     name: 'show_search_results',
     description: "Search the owner's notes and show matching notes as cards.",
@@ -125,9 +127,12 @@ export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone:
     render: ({ status, args }) =>
       status === 'complete' && typeof args.query === 'string' && args.query.trim()
         ? <LiveSearch query={args.query} includePrivate={shareOn} />
-        : quiet('Searchingâ€¦'),
+        : quiet('Searching…'),
   });
+  return null;
+}
 
+function CheckinAction({ timezone }: ActionProps) {
   useCopilotAction({
     name: 'checkin',
     description: 'Ask the owner for their daily check-in: mood, what happened, thoughts and ideas. Use this when they want to journal.',
@@ -149,7 +154,10 @@ export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone:
       );
     },
   });
+  return null;
+}
 
+function PreviewNote() {
   useCopilotAction({
     name: 'preview_note',
     description: 'Show a draft note for the owner to approve before it is saved. After "save", call create_note with the same title and body.',
@@ -170,7 +178,10 @@ export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone:
       );
     },
   });
+  return null;
+}
 
+function DeleteReminder() {
   useCopilotAction({
     name: 'delete_reminder',
     description: 'Delete a reminder after the owner approves.',
@@ -180,6 +191,44 @@ export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone:
       return <DeleteReminderConfirm id={String(args.id ?? '')} respond={respond} />;
     },
   });
-
   return null;
+}
+
+/*
+ * One tiny component per action. Tools are registered per CopilotKit provider and `available` cannot be toggled
+ * between renders, so each scope decides at mount which of these to render. To add an action: write one component
+ * above, add it here, and list its name in ACTIONS_BY_SCOPE.
+ */
+const ACTION_COMPONENTS: Record<string, (p: ActionProps) => JSX.Element | null> = {
+  show_reminders: ShowReminders,
+  delete_reminder: DeleteReminder,
+  show_mood_chart: ShowMoodChart,
+  checkin: CheckinAction,
+  show_search_results: ShowSearchResults,
+  preview_note: PreviewNote,
+};
+
+export const ACTIONS_BY_SCOPE: Record<Scope, string[]> = {
+  chat: ['show_reminders', 'delete_reminder', 'show_mood_chart', 'checkin', 'show_search_results', 'preview_note'],
+  reminders: ['show_reminders', 'delete_reminder'],
+  diary: ['checkin', 'show_mood_chart'],
+  notes: ['show_search_results', 'preview_note'],
+};
+
+/** Registers only this scope's actions, plus what the app tells Clio about the screen. Render inside that scope's provider. */
+export function ClioActions({ scope, shareOn = false, timezone }: { scope: Scope; shareOn?: boolean; timezone: string }) {
+  const location = useLocation();
+  useCopilotReadable({
+    description: 'Current date, the screen the owner is looking at, and which part of the app this conversation belongs to',
+    value: { today: todayIn(timezone), timezone, route: location.pathname, scope },
+  });
+  const names = ACTIONS_BY_SCOPE[scope] ?? [];
+  return (
+    <>
+      {names.map((name) => {
+        const Component = ACTION_COMPONENTS[name];
+        return Component ? <Component key={name} timezone={timezone} shareOn={shareOn} /> : null;
+      })}
+    </>
+  );
 }
