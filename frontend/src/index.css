@@ -20,6 +20,15 @@
   --ember-soft: #FFE8DF;
   --ember-tint: #FFF8F5;
 
+  /* Channel triplets backing the Tailwind neutral tokens (opacity modifiers work). */
+  --canvas-rgb: 248 250 250;
+  --card-rgb: 255 255 255;
+  --inset-rgb: 237 242 242;
+  --hairline-rgb: 225 234 235;
+  --ink-rgb: 19 30 34;
+  --ink-soft-rgb: 71 88 95;
+  --ink-muted-rgb: 130 148 155;
+
   --shadow-card: 0 8px 24px -4px rgba(13, 76, 85, 0.05);
   --shadow-ai: 0 12px 32px -6px rgba(255, 107, 53, 0.12);
   --shadow-modal: 0 16px 40px -8px rgba(7, 43, 48, 0.14);
@@ -57,6 +66,13 @@
 }
 
 .dark {
+  --canvas-rgb: 7 43 48;
+  --card-rgb: 14 58 65;
+  --inset-rgb: 19 69 77;
+  --hairline-rgb: 29 85 96;
+  --ink-rgb: 232 241 242;
+  --ink-soft-rgb: 182 203 207;
+  --ink-muted-rgb: 143 169 174;
   --canvas: #072B30;
   --card: #0E3A41;
   --inset: #13454D;

@@ -4,7 +4,7 @@ export type ChipTone = 'neutral' | 'teal' | 'ember' | 'danger';
 
 const TONES: Record<ChipTone, string> = {
   neutral: 'bg-inset text-ink-soft border-hairline',
-  teal: 'bg-teal/10 text-teal border-teal/20 dark:text-[#85BBC6]',
+  teal: 'bg-teal/10 text-[var(--primary)] border-teal/20',
   ember: 'bg-ember-soft text-ember border-ember/20',
   danger: 'bg-error/10 text-error border-error/20',
 };

@@ -4,6 +4,7 @@ import { Chip } from '../components/ui/Chip';
 import { AiBadge } from '../components/ui/AiBadge';
 import { CircleCheck } from '../components/ui/CircleCheck';
 import { Sheet } from '../components/ui/Sheet';
+import config from '../../tailwind.config.cjs?raw';
 
 describe('Chip', () => {
   it('is a button with aria-pressed when onClick given', async () => {
@@ -71,5 +72,30 @@ describe('Sheet', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
     rerender(<><button>opener</button><Sheet open={false} onClose={onClose} title="Edit">body</Sheet></>);
     expect(document.activeElement).toBe(screen.getByText('opener'));
+  });
+});
+
+// vitest runs with css:false, so ?raw yields '' for .css; read it from disk instead.
+// @ts-ignore node builtins are not in this project's type roots
+const { readFileSync } = await import('node:fs');
+const css: string = readFileSync('src/index.css', 'utf8').replace(/\r\n/g, '\n');
+
+describe('dark-mode neutral tokens', () => {
+  const keys = ['canvas', 'card', 'inset', 'hairline', 'DEFAULT', 'soft', 'muted'];
+  const refs = keys.map((k) => {
+    const m = config.match(new RegExp(String.raw`\b${k}: 'rgb\(var\((--[a-z-]+-rgb)\) / <alpha-value>\)'`));
+    return { key: k, name: m?.[1] };
+  });
+
+  it('resolves neutrals to CSS variables', () => {
+    for (const r of refs) expect(r.name, r.key).toBeTruthy();
+  });
+  it('defines each referenced variable in :root and .dark', () => {
+    const root = css.match(/:root\s*\{[\s\S]*?\n\}/)![0];
+    const dark = css.match(/\.dark\s*\{[\s\S]*?\n\}/)![0];
+    for (const r of refs) {
+      expect(root).toContain(`${r.name}:`);
+      expect(dark).toContain(`${r.name}:`);
+    }
   });
 });

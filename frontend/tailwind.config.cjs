@@ -12,10 +12,16 @@ module.exports = {
       colors: {
         teal: { DEFAULT: '#0D4C55', light: '#146B78', dark: '#072B30' },
         ember: { DEFAULT: '#FF6B35', light: '#FA824C', soft: '#FFE8DF', tint: '#FFF8F5' },
-        canvas: '#F8FAFA',
-        inset: '#EDF2F2',
-        hairline: '#E1EAEB',
-        ink: { DEFAULT: '#131E22', soft: '#47585F', muted: '#82949B' },
+        // Neutral tokens follow the theme: channels live in index.css (:root and .dark).
+        canvas: 'rgb(var(--canvas-rgb) / <alpha-value>)',
+        card: 'rgb(var(--card-rgb) / <alpha-value>)',
+        inset: 'rgb(var(--inset-rgb) / <alpha-value>)',
+        hairline: 'rgb(var(--hairline-rgb) / <alpha-value>)',
+        ink: {
+          DEFAULT: 'rgb(var(--ink-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--ink-soft-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--ink-muted-rgb) / <alpha-value>)',
+        },
       },
       boxShadow: {
         card: '0 8px 24px -4px rgba(13, 76, 85, 0.05)',
