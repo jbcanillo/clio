@@ -25,6 +25,17 @@ services:
       - data:/data
     restart: unless-stopped
 
+  # Optional: start with `docker compose --profile memory up -d` and set MEMORY_BACKEND=basic-memory.
+  # Needs outbound access to huggingface.co on first run (embedding model download).
+  basic-memory:
+    profiles: ["memory"]
+    build: ./basic-memory
+    volumes:
+      - vault:/vault
+      - bm-config:/config
+    restart: unless-stopped
+
 volumes:
   vault:
   data:
+  bm-config:

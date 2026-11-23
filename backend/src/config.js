@@ -39,5 +39,6 @@ export function loadConfig(env = process.env) {
     },
     timezone,
     memoryBackend,
+    basicMemoryUrl: env.BASIC_MEMORY_URL || 'http://basic-memory:8765/mcp',
   };
 }
