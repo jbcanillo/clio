@@ -7,7 +7,7 @@ const mockUpdate = jest.fn();
 const mockRemove = jest.fn();
 const mockGetAll = jest.fn();
 
-jest.mock('../utils/db', () => ({
+vi.mock('../utils/db', () => ({
   getAllJournalEntries: () => mockGetAll(),
   createJournalEntry: (...args) => mockAdd(...args),
   updateJournalEntry: (...args) => mockUpdate(...args),

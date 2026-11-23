@@ -22,29 +22,29 @@ const mockUseAnalytics = {
 const mockOnOpenBackup = jest.fn();
 const mockOnOpenRestore = jest.fn();
 
-jest.mock('../utils/db', () => ({
+vi.mock('../utils/db', () => ({
   deleteAllReminders: jest.fn(),
   deleteAllJournalEntries: jest.fn(),
   createReminder: jest.fn(),
   createJournalEntry: jest.fn()
 }));
 
-jest.mock('../hooks/useReminders', () => ({
+vi.mock('../hooks/useReminders', () => ({
   useReminders: () => mockUseReminders,
   useFilteredReminders: (r) => r,
   useSortedReminders: (r) => r
 }));
 
-jest.mock('../hooks/useJournal', () => ({
+vi.mock('../hooks/useJournal', () => ({
   useJournal: () => mockUseJournal
 }));
 
-jest.mock('../hooks/useAnalytics', () => ({
+vi.mock('../hooks/useAnalytics', () => ({
   __esModule: true,
   default: jest.fn(() => mockUseAnalytics)
 }));
 
-jest.mock('../utils/backupRestore', () => ({
+vi.mock('../utils/backupRestore', () => ({
   downloadBackup: jest.fn(),
   restoreFromFile: jest.fn()
 }));

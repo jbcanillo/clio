@@ -4,7 +4,7 @@ import SnoozeSelector from '../components/features/SnoozeSelector';
 
 const mockSnoozeReminder = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../hooks/useReminders', () => ({
+vi.mock('../hooks/useReminders', () => ({
   useReminders: () => ({
     snoozeReminder: mockSnoozeReminder
   })

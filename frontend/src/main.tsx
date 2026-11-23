@@ -7,7 +7,7 @@ import './index.css';
 // Set DaisyUI luxury theme
 document.documentElement.setAttribute('data-theme', 'luxury');
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
     <HashRouter>

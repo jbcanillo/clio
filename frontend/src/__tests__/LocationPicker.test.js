@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import LocationPicker from '../components/features/LocationPicker';
 
 // Mock react-leaflet
-jest.mock('react-leaflet', () => ({
+vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }) => <div data-testid="map-container">{children}</div>,
   TileLayer: () => <div data-testid="tile-layer" />,
   Marker: () => <div data-testid="marker" />,
@@ -11,9 +11,10 @@ jest.mock('react-leaflet', () => ({
   useMapEvents: () => null
 }));
 
-jest.mock('leaflet', () => ({
-  icon: jest.fn(() => ({}))
-}));
+vi.mock('leaflet', () => {
+  const icon = jest.fn(() => ({}));
+  return { default: { icon }, icon };
+});
 
 describe('LocationPicker', () => {
   it('should render without crashing', () => {

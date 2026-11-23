@@ -25,50 +25,6 @@ beforeEach(() => {
   
   global.URL.createObjectURL = jest.fn(() => 'blob:test');
   global.URL.revokeObjectURL = mockRevoke;
-  
-  // Mock CryptoJS module
-  const mockEncrypt = (data, password) => {
-    const payload = JSON.stringify(data);
-    return {
-      toString: () => btoa(payload + '|' + password)
-    };
-  };
-  
-  const mockDecrypt = (cipherText, password) => {
-    if (typeof cipherText !== 'string') {
-      throw new Error('Invalid ciphertext');
-    }
-    try {
-      const decoded = atob(cipherText);
-      const [jsonStr, pwd] = decoded.split('|');
-      if (pwd !== password) {
-        throw new Error('Incorrect password');
-      }
-      return {
-        toString: (enc) => {
-          if (enc && enc.toString === 'stringify') {
-            return jsonStr;
-          }
-          return jsonStr;
-        }
-      };
-    } catch (e) {
-      throw new Error('Decryption failed');
-    }
-  };
-  
-  // Mock the crypto-js module
-  jest.mock('crypto-js', () => ({
-    AES: {
-      encrypt: mockEncrypt,
-      decrypt: mockDecrypt
-    },
-    enc: {
-      Utf8: {
-        stringify: (val) => val?.toString?.() || ''
-      }
-    }
-  }));
 });
 
 afterEach(() => {

@@ -10,7 +10,7 @@ import {
 } from '../utils/analytics';
 
 // Mock analytics utils to isolate hook behavior
-jest.mock('../utils/analytics', () => ({
+vi.mock('../utils/analytics', () => ({
   getMetrics: jest.fn(),
   getTrendData: jest.fn(),
   getWeekdayStats: jest.fn(),

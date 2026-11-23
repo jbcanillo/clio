@@ -134,3 +134,8 @@ MEMORY.md
 SOUL.md
 TOOLS.md
 USER.md
+
+# Clio
+frontend/dist/
+backend/node_modules/
+.superpowers/

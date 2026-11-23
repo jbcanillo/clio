@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react';
 import Stat from '../components/features/Stat';
 
 // Mock Recharts ResponsiveContainer to avoid ResizeObserver issues
-jest.mock('recharts', () => ({
-  ...jest.requireActual('recharts'),
+vi.mock('recharts', async () => ({
+  ...(await vi.importActual('recharts')),
   ResponsiveContainer: ({ children }) => (
     <div className="responsive-container">
       {children}
@@ -25,15 +25,15 @@ jest.mock('recharts', () => ({
 }));
 
 // Mock all dependencies
-jest.mock('../hooks/useReminders', () => ({
+vi.mock('../hooks/useReminders', () => ({
   useReminders: () => ({ reminders: [], loading: false })
 }));
 
-jest.mock('../hooks/useJournal', () => ({
+vi.mock('../hooks/useJournal', () => ({
   useJournal: () => ({ entries: [] })
 }));
 
-jest.mock('../hooks/useAnalytics', () => ({
+vi.mock('../hooks/useAnalytics', () => ({
   __esModule: true,
   default: () => ({
     metrics: { total: 0, completed: 0, pending: 0, completionRate: 0, priorityStats: { high: 0, medium: 0, low: 0 }, overdue: 0, snoozed: 0, onTime: 0, late: 0 },
@@ -44,14 +44,14 @@ jest.mock('../hooks/useAnalytics', () => ({
   })
 }));
 
-jest.mock('../utils/db', () => ({
+vi.mock('../utils/db', () => ({
   deleteAllReminders: jest.fn(),
   deleteAllJournalEntries: jest.fn(),
   createReminder: jest.fn(),
   createJournalEntry: jest.fn()
 }));
 
-jest.mock('../utils/backupRestore', () => ({
+vi.mock('../utils/backupRestore', () => ({
   downloadBackup: jest.fn(),
   restoreFromFile: jest.fn()
 }));
