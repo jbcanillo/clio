@@ -41,3 +41,15 @@ describe('theme', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 });
+
+describe('input focus ring', () => {
+  it('uses a variable that .dark remaps (not fixed --teal)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('src/index.css', 'utf8');
+    const rule = css.match(/\.input:focus[^{]*\{([^}]*)\}/)![1];
+    expect(rule).toContain('var(--border-focus)');
+    expect(rule).not.toContain('var(--teal)');
+    const dark = css.match(/\.dark\s*\{([^}]*)\}/)![1];
+    expect(dark).toContain('--border-focus');
+  });
+});

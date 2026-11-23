@@ -140,9 +140,9 @@ html {
 }
 .input:focus, .textarea:focus, .select:focus {
   background: var(--card);
-  border-color: var(--teal);
+  border-color: var(--border-focus);
   outline: none;
-  box-shadow: 0 0 0 1px var(--teal);
+  box-shadow: 0 0 0 1px var(--border-focus);
 }
 .input::placeholder, .textarea::placeholder {
   color: var(--ink-muted);
