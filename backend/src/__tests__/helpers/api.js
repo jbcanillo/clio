@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeVault } from './vault.js';
 import { createJournalService } from '../../services/journalService.js';
+import { createNotesService } from '../../services/notesService.js';
 import { createShareSession } from '../../services/shareSession.js';
 
 /** Full app over a temp vault; returns helpers that already carry a valid session token. */
@@ -23,7 +24,8 @@ export async function makeApi(extra = {}) {
   const reminders = createReminderService({ vault: h.vault });
   const memory = createPlainVaultMemory({ vault: h.vault });
   const journal = createJournalService({ vault: h.vault });
-  const deps = { journal, shareSession: createShareSession(), auth, settings, daily, reminders, memory, vault: h.vault, config: { timezone: 'UTC' }, ...extra };
+  const notes = createNotesService({ vault: h.vault });
+  const deps = { notes, journal, shareSession: createShareSession(), auth, settings, daily, reminders, memory, vault: h.vault, config: { timezone: 'UTC' }, ...extra };
   const app = createApp(deps);
   const { body } = await request(app).post('/api/auth/login').send({ password: 'pw' });
   const token = body.token;

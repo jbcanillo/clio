@@ -9,7 +9,7 @@ describe('API authentication', () => {
       ['get', '/api/daily/2026-11-23'], ['post', '/api/daily/2026-11-23/entries'],
       ['get', '/api/reminders'], ['post', '/api/reminders'], ['post', '/api/reminders/x/complete'],
       ['post', '/api/reminders/x/snooze'], ['delete', '/api/reminders/x'],
-      ['get', '/api/search?q=a'], ['get', '/api/analytics/mood?from=2026-11-01&to=2026-11-02'],
+      ['get', '/api/notes'], ['get', '/api/search?q=a'], ['get', '/api/analytics/mood?from=2026-11-01&to=2026-11-02'],
     ];
     for (const [m, url] of routes) expect((await request(app)[m](url)).status, `${m} ${url}`).toBe(401);
   });
