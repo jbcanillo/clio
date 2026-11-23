@@ -7,12 +7,12 @@ interface Props {
 
 export function ConfirmCard({ title, detail, onApprove, onCancel }: Props) {
   return (
-    <div className="card bg-base-200 p-4 space-y-2" role="alertdialog" aria-label={title}>
-      <div className="font-medium">{title}</div>
-      {detail && <div className="text-sm opacity-80">{detail}</div>}
+    <div className="ai-card p-4 space-y-2" role="alertdialog" aria-label={title}>
+      <div className="font-semibold text-ink">{title}</div>
+      {detail && <div className="text-sm text-ink-soft">{detail}</div>}
       <div className="flex gap-2 justify-end">
-        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary btn-sm" onClick={onApprove}>Approve</button>
+        <button className="btn btn-ghost btn-sm text-[var(--primary)]" onClick={onCancel}>Cancel</button>
+        <button className="btn btn-sm h-12 min-h-12 rounded-full border-0 bg-teal px-6 text-white hover:opacity-90" onClick={onApprove}>Approve</button>
       </div>
     </div>
   );
