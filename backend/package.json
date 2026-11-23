@@ -15,7 +15,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
     "supertest": "^7.3.2",
