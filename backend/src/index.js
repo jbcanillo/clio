@@ -8,6 +8,7 @@ import { createVaultService } from './services/vaultService.js';
 import { createDailyService } from './services/dailyService.js';
 import { createReminderService } from './services/reminderService.js';
 import { createMemoryService } from './services/memory/index.js';
+import { createShareSession } from './services/shareSession.js';
 
 const config = loadConfig();
 fs.mkdirSync(config.vaultDir, { recursive: true });
@@ -24,5 +25,7 @@ const daily = createDailyService({ vault });
 const reminders = createReminderService({ vault });
 const memory = createMemoryService(config, { vault });
 
-const app = createApp({ config, settings, auth, vault, daily, reminders, memory });
+const shareSession = createShareSession();
+
+const app = createApp({ config, settings, auth, vault, daily, reminders, memory, shareSession });
 app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));
