@@ -1,4 +1,9 @@
 import 'dotenv/config';
+
+// Clio makes no outbound calls except to the configured AI provider.
+process.env.COPILOTKIT_TELEMETRY_DISABLED ??= 'true';
+process.env.DO_NOT_TRACK ??= '1';
+
 import fs from 'node:fs';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
@@ -34,5 +39,5 @@ const scheduler = createScheduler({ settings, daily, push, dataDir: config.dataD
 if (config.vapid.publicKey && config.vapid.privateKey) scheduler.start();
 else console.warn('VAPID keys not set: daily check-in notifications are disabled');
 
-const app = createApp({ config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
+const app = createApp({ openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
 app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));

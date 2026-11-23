@@ -32,6 +32,7 @@ export function loadConfig(env = process.env) {
     sessionTtlHours: parseInt(env.SESSION_TTL_HOURS, 10) || 8,
     openrouterApiKey: env.OPENROUTER_API_KEY || undefined,
     openrouterModel: env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
+    openrouterBaseUrl: env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     vapid: {
       publicKey: env.VAPID_PUBLIC_KEY || '',
       privateKey: env.VAPID_PRIVATE_KEY || '',

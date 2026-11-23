@@ -18,6 +18,10 @@ describe('loadConfig', () => {
     expect(c.vaultDir).toBe('/vault');
     expect(c.dataDir).toBe('/data');
   });
+  it('defaults and overrides the OpenRouter base URL', () => {
+    expect(loadConfig(good).openrouterBaseUrl).toBe('https://openrouter.ai/api/v1');
+    expect(loadConfig({ ...good, OPENROUTER_BASE_URL: 'http://localhost:9/v1' }).openrouterBaseUrl).toBe('http://localhost:9/v1');
+  });
   it('rejects an unknown MEMORY_BACKEND', () => {
     expect(() => loadConfig({ ...good, MEMORY_BACKEND: 'mem0' })).toThrow(/MEMORY_BACKEND/);
   });

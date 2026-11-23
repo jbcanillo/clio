@@ -50,8 +50,30 @@ self.addEventListener('message', (event) => {
     return handleTestNotification();
   }
 });
-self.addEventListener('push', (event) => {  console.log('Push notification received', event);  const options = {    body: 'Default notification body',    icon: '/favicon.ico',    badge: '/favicon.ico'  };  let title = 'Clio';  if (event.data) {    try {      const payload = event.data.json();      options.body = payload.body || options.body;      options.icon = payload.icon || options.icon;      options.badge = payload.badge || options.badge;      options.tag = payload.tag || 'push';      options.data = Object.assign({}, payload.data || {}, payload.url ? { url: payload.url } : {});
-      title = payload.title || title;      options.actions = payload.actions || [];    } catch (err) {      console.error('Error parsing push data', err);    }  }  event.waitUntil(    self.registration.showNotification(title, options)  );};
+self.addEventListener('push', (event) => {
+  console.log('Push notification received', event);
+  let title = 'Clio';
+  const options = {
+    body: 'Default notification body',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico'
+  };
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      title = payload.title || title;
+      options.body = payload.body || options.body;
+      options.icon = payload.icon || options.icon;
+      options.badge = payload.badge || options.badge;
+      options.tag = payload.tag || 'push';
+      options.data = Object.assign({}, payload.data || {}, payload.url ? { url: payload.url } : {});
+      options.actions = payload.actions || [];
+    } catch (err) {
+      console.error('Error parsing push data', err);
+    }
+  }
+  event.waitUntil(self.registration.showNotification(title, options));
+});
 self.addEventListener('notificationclick', (event) => {
   const { action, reminderId } = event.notification.data || {};
   event.notification.close();
