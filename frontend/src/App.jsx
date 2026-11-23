@@ -18,7 +18,6 @@ import NotificationManager from './components/features/NotificationManager';
 import BottomNavigation from './components/layout/BottomNavigation';
 import BackupRestorePage from './components/features/BackupRestorePage';
 import InstallModal from './components/ui/InstallModal';
-import useGalaxyEffects from './hooks/useGalaxyEffects';
 import { upsertAlarm, deleteAlarm, requestNotificationPermission } from './utils/notificationSync';
 import { initializeNotifications, addNotificationForReminder, removeNotificationForReminder, updateNotificationForReminder } from './utils/notifications';
 
@@ -28,7 +27,6 @@ function AppContent() {
   const toast = useToast();
 
   // Initialize galaxy effects
-  useGalaxyEffects();
 
   // Derive activeTab from route path
   const getTabFromPath = (path) => {
