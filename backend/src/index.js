@@ -1,0 +1,50 @@
+import 'dotenv/config';
+
+// Clio makes no outbound calls except to the configured AI provider.
+process.env.COPILOTKIT_TELEMETRY_DISABLED ??= 'true';
+process.env.DO_NOT_TRACK ??= '1';
+
+import fs from 'node:fs';
+import { createApp } from './app.js';
+import { loadConfig } from './config.js';
+import { createAuth } from './services/authService.js';
+import { createSettingsService } from './services/settingsService.js';
+import { createVaultService } from './services/vaultService.js';
+import { createDailyService } from './services/dailyService.js';
+import { createReminderService } from './services/reminderService.js';
+import { createJournalService } from './services/journalService.js';
+import { createImportService } from './services/importService.js';
+import { createMemoryService } from './services/memory/index.js';
+import { createShareSession } from './services/shareSession.js';
+import { createPushService } from './services/pushService.js';
+import { createScheduler } from './services/schedulerService.js';
+import { createSyncService } from './services/syncService.js';
+
+const config = loadConfig();
+fs.mkdirSync(config.vaultDir, { recursive: true });
+
+const settings = createSettingsService({
+  dataDir: config.dataDir,
+  secretKey: config.secretKey,
+  envOpenRouterKey: config.openrouterApiKey,
+  defaults: { openrouterModel: config.openrouterModel, timezone: config.timezone },
+});
+const auth = createAuth({ password: config.password, ttlHours: config.sessionTtlHours });
+const vault = createVaultService({ vaultDir: config.vaultDir });
+const daily = createDailyService({ vault });
+const reminders = createReminderService({ vault });
+const journal = createJournalService({ vault });
+const importer = createImportService({ reminders, journal });
+const memory = createMemoryService(config, { vault });
+
+const shareSession = createShareSession();
+
+const push = createPushService({ dataDir: config.dataDir, vapid: config.vapid });
+const scheduler = createScheduler({ settings, daily, push, reminders, dataDir: config.dataDir });
+if (config.vapid.publicKey && config.vapid.privateKey) scheduler.start();
+else console.warn('VAPID keys not set: daily check-in notifications are disabled');
+
+const sync = createSyncService({ vault, dataDir: config.dataDir, memory });
+
+const app = createApp({ importer, journal, sync, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
+app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));
