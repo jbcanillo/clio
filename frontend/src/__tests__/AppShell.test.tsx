@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HashRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -102,5 +102,27 @@ describe('App shell', () => {
     renderApp('#/chat');
     await userEvent.click(screen.getByRole('button', { name: 'Search notes' }));
     expect(window.location.hash).toBe('#/notes?focus=search');
+  });
+
+  it('Escape returns focus to the account button', async () => {
+    renderApp('#/chat');
+    const trigger = screen.getByRole('button', { name: 'Account menu' });
+    await userEvent.click(trigger);
+    await userEvent.keyboard('{Escape}');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('shows the install modal ~2s after beforeinstallprompt', async () => {
+    vi.useFakeTimers();
+    try {
+      renderApp('#/chat');
+      const ev = new Event('beforeinstallprompt', { cancelable: true });
+      act(() => { window.dispatchEvent(ev); });
+      expect(screen.queryByText('Install Clio')).toBeNull();
+      act(() => { vi.advanceTimersByTime(2100); });
+      expect(screen.getByText('Install Clio')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

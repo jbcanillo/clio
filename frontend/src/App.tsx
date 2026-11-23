@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AddReminderForm from './components/features/AddReminderForm';
 import BackupRestorePage from './components/features/BackupRestorePage';
@@ -118,13 +118,15 @@ function AppContent() {
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
   }, []);
 
+  const installTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!hasEngaged && deferInstall) {
       setHasEngaged(true);
-      const t = setTimeout(() => setShowInstallModal(true), 2000);
-      return () => clearTimeout(t);
+      installTimer.current = setTimeout(() => setShowInstallModal(true), 2000);
     }
   }, [hasEngaged, deferInstall]);
+  // Only clear the timer on unmount; the effect above re-runs when hasEngaged flips.
+  useEffect(() => () => { if (installTimer.current) clearTimeout(installTimer.current); }, []);
 
   const install = async () => {
     if (!deferInstall) return;

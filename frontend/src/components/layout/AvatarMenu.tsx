@@ -13,11 +13,12 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); } };
     const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
@@ -28,7 +29,7 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
     };
   }, [open]);
 
-  const choose = (fn: () => void) => () => { setOpen(false); fn(); };
+  const choose = (fn: () => void) => () => { setOpen(false); triggerRef.current?.focus(); fn(); };
   const toggleTheme = () => {
     const next: Theme = theme === 'clio-dark' ? 'clio-light' : 'clio-dark';
     applyTheme(next);
@@ -61,6 +62,7 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
   return (
     <div ref={ref} className="relative" onKeyDown={onKeyDown}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label="Account menu"
         aria-haspopup="menu"
