@@ -43,3 +43,66 @@ describe('GET /api/notes', () => {
     expect((await as('get', '/api/notes')).body[0].snippet).toBe('<script>alert(1)</script>');
   });
 });
+
+describe('PATCH /api/notes/checklist', () => {
+  const P = 'Clio/Notes/groceries.md';
+  const seed = (h) => h.writeRaw(P, '---\ntitle: Groceries\n---\n# H\n\n- [ ] milk\n- [x] eggs\n- [ ] bread\n\ntrailing  text\n');
+  const hashOf = async (as) => (await as('get', '/api/notes')).body[0].hash;
+
+  it('toggles only the nth marker and round-trips byte-for-byte', async () => {
+    const { as, h, deps } = await setup();
+    seed(h);
+    const before = (await deps.vault.read(P)).body;
+    const base = await hashOf(as);
+    const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 1, checked: false, baseHash: base });
+    expect(res.status).toBe(200);
+    expect(res.body.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(res.body.hash).not.toBe(base);
+    const after = (await deps.vault.read(P)).body;
+    expect(after).toBe(before.replace('- [x] eggs', '- [ ] eggs'));
+    const back = await as('patch', '/api/notes/checklist').send({ path: P, index: 1, checked: true, baseHash: res.body.hash });
+    expect(back.status).toBe(200);
+    expect((await deps.vault.read(P)).body).toBe(before);
+  });
+
+  it('checks an unchecked item', async () => {
+    const { as, h, deps } = await setup();
+    seed(h);
+    const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 2, checked: true, baseHash: await hashOf(as) });
+    expect(res.status).toBe(200);
+    expect((await deps.vault.read(P)).body).toContain('- [x] bread');
+    expect((await deps.vault.read(P)).body).toContain('- [ ] milk');
+  });
+
+  it('returns 409 for a stale baseHash and leaves the file unchanged', async () => {
+    const { as, h, deps } = await setup();
+    seed(h);
+    const before = (await deps.vault.read(P)).hash;
+    const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 0, checked: true, baseHash: 'a'.repeat(64) });
+    expect(res.status).toBe(409);
+    expect((await deps.vault.read(P)).hash).toBe(before);
+  });
+
+  it('returns 400 for an index with no checklist line', async () => {
+    const { as, h } = await setup();
+    seed(h);
+    const res = await as('patch', '/api/notes/checklist').send({ path: P, index: 99, checked: true, baseHash: await hashOf(as) });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for bad paths and bodies', async () => {
+    const { as } = await setup();
+    const ok = { index: 0, checked: true, baseHash: 'a'.repeat(64) };
+    for (const path of ['../x.md', 'Clio/Notes/../x.md', 'Clio/Daily/2026-11-23.md', 'Clio/Notes/x.txt']) {
+      expect((await as('patch', '/api/notes/checklist').send({ ...ok, path })).status).toBe(400);
+    }
+    expect((await as('patch', '/api/notes/checklist').send({ ...ok, path: P, extra: 1 })).status).toBe(400);
+    expect((await as('patch', '/api/notes/checklist').send({ ...ok, path: P, index: -1 })).status).toBe(400);
+  });
+
+  it('returns 404 for an unknown note', async () => {
+    const { as } = await setup();
+    const res = await as('patch', '/api/notes/checklist').send({ path: 'Clio/Notes/nope.md', index: 0, checked: true, baseHash: 'a'.repeat(64) });
+    expect(res.status).toBe(404);
+  });
+});

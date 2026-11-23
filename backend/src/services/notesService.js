@@ -1,5 +1,8 @@
+import { ValidationError } from '../errors.js';
+import { ConflictError } from './vaultService.js';
 const NOTES_DIR = 'Clio/Notes';
 const CHECK = /^\s*- \[( |x|X)\] (.*)$/;
+const NOTE_PATH_ERR = `path must be a markdown file inside ${NOTES_DIR}/`;
 
 const iso = (v) => {
   if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toISOString();
@@ -44,5 +47,28 @@ export function createNotesService({ vault }) {
     // Stable sort keeps file order for notes without a date.
     return out.sort((a, b) => (a.updated < b.updated ? 1 : a.updated > b.updated ? -1 : 0));
   }
-  return { list };
+
+  /** Rewrites only the marker of the nth checklist line (same CHECK + indexing as list()). */
+  async function toggleChecklist(path, index, checked, baseHash) {
+    if (typeof path !== 'string' || !path.startsWith(`${NOTES_DIR}/`) || !path.endsWith('.md') || path.split('/').includes('..')) {
+      throw new ValidationError(NOTE_PATH_ERR);
+    }
+    const current = await vault.read(path);
+    if (!current) throw Object.assign(new Error('Note not found'), { code: 'not_found' });
+    if (current.hash !== baseHash) throw new ConflictError(current);
+    const parts = current.body.split(/(\r?\n)/); // keep separators so every other byte survives
+    let n = 0;
+    let found = false;
+    for (let i = 0; i < parts.length; i += 2) {
+      if (!CHECK.test(parts[i])) continue;
+      if (n++ === index) {
+        parts[i] = parts[i].replace(/\[( |x|X)\]/, checked ? '[x]' : '[ ]');
+        found = true;
+        break;
+      }
+    }
+    if (!found) throw new ValidationError(`no checklist item at index ${index}`);
+    return vault.write(path, { frontmatter: current.frontmatter, body: parts.join('') }, { expectedHash: current.hash });
+  }
+  return { list, toggleChecklist };
 }
