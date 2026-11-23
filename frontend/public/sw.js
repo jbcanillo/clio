@@ -221,3 +221,13 @@ function triggerNow(alarm) {
     data: { reminderId: alarm.id }
   }).catch(err => console.error('Show notification error:', err));
 }
+
+// Background Sync: ask every open window to flush its (encrypted) note outbox.
+self.addEventListener('sync', (event) => {
+  if (event.tag !== 'clio-outbox') return;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      clients.forEach((c) => c.postMessage({ type: 'FLUSH_OUTBOX' }));
+    })
+  );
+});

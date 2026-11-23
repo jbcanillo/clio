@@ -85,5 +85,38 @@ export function createSyncService({ vault, dataDir, memory }) {
     return results;
   }
 
-  return { apply };
+  const notFound = () => Object.assign(new Error('Note not found'), { code: 'not_found' });
+
+  async function read(p) {
+    assertNotePath(p);
+    const f = await vault.read(p);
+    if (!f) throw notFound();
+    return { path: p, title: f.frontmatter.title ?? null, body: f.body, hash: f.hash };
+  }
+
+  /** choice: 'mine' = phone version wins, 'theirs' = server version wins, 'both' = keep the copy as its own note. */
+  async function resolve({ path: p, conflictPath, choice }) {
+    assertNotePath(p);
+    assertNotePath(conflictPath);
+    if (!conflictPath.startsWith(p.replace(/\.md$/, '.conflict-'))) throw new ValidationError('conflictPath is not a conflict copy of this note');
+    const copy = await vault.read(conflictPath);
+    if (!copy) throw notFound();
+    const original = await vault.read(p);
+    let copyPath;
+    if (choice === 'mine') {
+      await vault.write(p, { frontmatter: original?.frontmatter ?? { title: copy.frontmatter.title }, body: copy.body }, { expectedHash: original ? original.hash : null });
+    } else if (choice === 'both') {
+      const { conflictOf, ...fm } = copy.frontmatter; // eslint-disable-line no-unused-vars
+      const title = `${fm.title ?? 'Note'} (copy)`;
+      copyPath = await vault.uniquePath(NOTES_DIR, title);
+      await vault.write(copyPath, { frontmatter: { ...fm, title }, body: copy.body }, { expectedHash: null });
+    } else if (choice !== 'theirs') {
+      throw new ValidationError("choice must be 'mine', 'theirs' or 'both'");
+    }
+    await vault.remove(conflictPath, { expectedHash: copy.hash });
+    await memory?.reindex();
+    return { path: p, ...(copyPath ? { copyPath } : {}) };
+  }
+
+  return { apply, read, resolve };
 }

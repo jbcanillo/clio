@@ -5,7 +5,11 @@ import '@copilotkit/react-ui/styles.css';
 import { useEffect, useState } from 'react';
 import { CheckinForm, type CheckinValues } from '../components/gen/CheckinForm';
 import { ClioActions, saveCheckin } from '../copilot/actions';
+import { ConflictList } from '../components/ConflictList';
+import { QuickNote } from '../components/QuickNote';
 import { apiFetch } from '../lib/api';
+import { outbox, saveNote } from '../offline';
+import { useOnlineSync } from '../offline/useOnlineSync';
 import { todayIn } from '../lib/today';
 
 function ShareToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
@@ -30,7 +34,9 @@ export default function ChatPage() {
   const [timezone, setTimezone] = useState<string | null>(null);
   const [checkin, setCheckin] = useState(() => new URLSearchParams(window.location.search).get('checkin') === '1');
   const [error, setError] = useState('');
+  const [showNote, setShowNote] = useState(false);
   const { appendMessage } = useCopilotChat();
+  const { pending, conflicts, resolved } = useOnlineSync(outbox);
 
   useEffect(() => {
     apiFetch<{ on: boolean }>('/api/session/share').then((r) => setShareOn(r.on)).catch(() => {});
@@ -58,7 +64,15 @@ export default function ChatPage() {
 
   return (
     <section className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex justify-end"><ShareToggle on={shareOn} onChange={setShareOn} /></div>
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+          <button className="btn btn-xs" onClick={() => setShowNote((v) => !v)}>{showNote ? 'Close' : '+ Note'}</button>
+          {pending > 0 && <span className="badge badge-sm">{pending} waiting to sync</span>}
+        </div>
+        <ShareToggle on={shareOn} onChange={setShareOn} />
+      </div>
+      {showNote && <div className="px-2 pb-2"><QuickNote onSave={saveNote} /></div>}
+      <ConflictList conflicts={conflicts} onResolved={resolved} />
       <ClioActions shareOn={shareOn} timezone={timezone ?? 'UTC'} />
       {checkin && timezone && (
         <div className="px-2 pb-2">

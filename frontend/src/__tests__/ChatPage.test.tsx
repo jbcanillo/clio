@@ -8,6 +8,7 @@ vi.mock('@copilotkit/react-ui', () => ({ CopilotChat: () => <div data-testid="ch
 vi.mock('@copilotkit/react-ui/styles.css', () => ({}));
 vi.mock('@copilotkit/react-core', async (orig) => ({ ...(await orig<object>()), useCopilotChat: () => ({ appendMessage }) }));
 vi.mock('../copilot/actions', async (orig) => ({ ...(await orig<object>()), ClioActions: () => null }));
+vi.mock('../offline', () => ({ outbox: { flush: async () => ({ sent: 0, conflicts: [], failed: 0, locked: false }), pending: async () => 0 }, saveNote: vi.fn() }));
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (...a: unknown[]) => apiFetch(...a) }));
 

@@ -104,3 +104,58 @@ describe('POST /api/sync/notes', () => {
     expect(ok.body.results[0]).toMatchObject({ id: 'c1', status: 'applied' });
   });
 });
+
+describe('conflict resolution', () => {
+  async function conflicted() {
+    const s = setup();
+    const [created] = await s.sync.apply([change()]);
+    fs.appendFileSync(path.join(s.h.root, created.path), '\nserver edit');
+    const [r] = await s.sync.apply([change({ id: 'abcdef123', path: created.path, baseHash: created.hash, body: 'phone edit' })]);
+    return { ...s, path: created.path, conflictPath: r.conflictPath };
+  }
+  it('read returns a note inside Clio/Notes and not_found for a missing one', async () => {
+    const { sync, path: p } = await conflicted();
+    expect((await sync.read(p)).body).toContain('server edit');
+    await expect(sync.read('Clio/Notes/none.md')).rejects.toMatchObject({ code: 'not_found' });
+    await expect(sync.read('Clio/Daily/2026-01-01.md')).rejects.toThrow(/Clio\/Notes/);
+  });
+  it('"theirs" keeps the server version and deletes the conflict copy', async () => {
+    const { sync, h, path: p, conflictPath } = await conflicted();
+    await sync.resolve({ path: p, conflictPath, choice: 'theirs' });
+    expect(await h.vault.read(conflictPath)).toBeNull();
+    expect((await h.vault.read(p)).body).toContain('server edit');
+  });
+  it('"mine" replaces the original with the phone version and deletes the conflict copy', async () => {
+    const { sync, h, path: p, conflictPath } = await conflicted();
+    await sync.resolve({ path: p, conflictPath, choice: 'mine' });
+    expect(await h.vault.read(conflictPath)).toBeNull();
+    const f = await h.vault.read(p);
+    expect(f.body).toContain('phone edit');
+    expect(f.body).not.toContain('server edit');
+    expect(f.frontmatter.title).toBe('Garden ideas');
+  });
+  it('"both" turns the conflict copy into a normal separate note', async () => {
+    const { sync, h, path: p, conflictPath } = await conflicted();
+    const res = await sync.resolve({ path: p, conflictPath, choice: 'both' });
+    expect(await h.vault.read(conflictPath)).toBeNull();
+    const copy = await h.vault.read(res.copyPath);
+    expect(copy.body).toContain('phone edit');
+    expect(copy.frontmatter.conflictOf).toBeUndefined();
+    expect((await h.vault.read(p)).body).toContain('server edit');
+  });
+  it('rejects a conflictPath that does not belong to the note', async () => {
+    const { sync, path: p } = await conflicted();
+    await expect(sync.resolve({ path: p, conflictPath: 'Clio/Notes/other.md', choice: 'theirs' })).rejects.toThrow(/conflict/i);
+  });
+  it('is exposed over HTTP', async () => {
+    const h = makeVault();
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clio-sync-'));
+    const sync = createSyncService({ vault: h.vault, dataDir });
+    const { as } = await makeApi({ sync });
+    const [created] = await sync.apply([change()]);
+    expect((await as('get', `/api/notes/read?path=${encodeURIComponent(created.path)}`)).body.body).toContain('plant tomatoes');
+    expect((await as('get', '/api/notes/read?path=Clio/Daily/x.md')).status).toBe(400);
+    expect((await as('get', '/api/notes/read?path=Clio/Notes/none.md')).status).toBe(404);
+    expect((await as('post', '/api/sync/resolve').send({ path: created.path, conflictPath: 'x', choice: 'maybe' })).status).toBe(400);
+  });
+});

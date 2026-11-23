@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { unlockOutbox } from '../offline/session';
 import { ApiError, apiFetch, getToken, setToken } from './api';
 
 export function useToken(): string | null {
@@ -22,6 +23,7 @@ export function LoginScreen() {
     setError('');
     try {
       const { token } = await apiFetch<{ token: string }>('/api/auth/login', { method: 'POST', json: { password } });
+      await unlockOutbox(password).catch(() => {}); // offline notes need a secure context; chat works without
       setToken(token);
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;

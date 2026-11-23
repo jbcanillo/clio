@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(path.resolve(__dirname, '../../public/sw.js'), 'utf8');
 
-function loadWorker({ clients = [] } = {}) {
+function loadWorker({ clients = [], allClients = [] } = {}) {
   const handlers = {};
   const shown = [];
   const opened = [];
@@ -12,7 +12,7 @@ function loadWorker({ clients = [] } = {}) {
     addEventListener: (type, fn) => { handlers[type] = fn; },
     registration: { showNotification: (title, options) => { shown.push({ title, options }); return Promise.resolve(); } },
     clients: {
-      matchAll: () => Promise.resolve(clients),
+      matchAll: () => Promise.resolve(clients.length ? clients : allClients),
       openWindow: (url) => { opened.push(url); return Promise.resolve(); },
     },
     skipWaiting: () => {},
@@ -60,5 +60,18 @@ describe('public/sw.js', () => {
     handlers.notificationclick({ notification: { data: { url: '/?checkin=1' }, close() {} }, action: '', ...w });
     await w.done();
     expect(navigated).toEqual(['/?checkin=1']);
+  });
+  it('Background Sync tag "clio-outbox" asks every open window to flush the outbox', async () => {
+    const posted = [];
+    const client = { postMessage: (m) => posted.push(m) };
+    const { handlers } = loadWorker({ allClients: [client] });
+    const w = waitFor();
+    handlers.sync({ tag: 'clio-outbox', ...w });
+    await w.done();
+    expect(posted).toEqual([{ type: 'FLUSH_OUTBOX' }]);
+    const other = waitFor();
+    handlers.sync({ tag: 'something-else', ...other });
+    await other.done();
+    expect(posted).toHaveLength(1);
   });
 });

@@ -12,10 +12,22 @@ const change = z.object({
 });
 const body = z.object({ changes: z.array(change).max(100) });
 
+const resolveBody = z.object({
+  path: z.string().max(500),
+  conflictPath: z.string().max(500),
+  choice: z.enum(['mine', 'theirs', 'both']),
+}).strict();
+
 export function syncRouter({ sync }) {
   const r = express.Router();
   r.post('/sync/notes', wrap(async (req, res) => {
     res.json({ results: await sync.apply(parse(body, req.body).changes) });
+  }));
+  r.get('/notes/read', wrap(async (req, res) => {
+    res.json(await sync.read(parse(z.string().max(500), req.query.path)));
+  }));
+  r.post('/sync/resolve', wrap(async (req, res) => {
+    res.json(await sync.resolve(parse(resolveBody, req.body)));
   }));
   return r;
 }
