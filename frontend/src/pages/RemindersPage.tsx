@@ -4,6 +4,7 @@ import { ClioChat } from '../components/chat/ClioChat';
 import { ReminderCards } from '../components/gen/ReminderCards';
 import EditReminderFormModal from '../components/features/EditReminderFormModal';
 import { Chip } from '../components/ui/Chip';
+import { useToast } from '../components/ui/Toast';
 import { ClioActions } from '../copilot/actions';
 import { useReminders } from '../hooks/useReminders';
 import { apiFetch } from '../lib/api';
@@ -48,6 +49,7 @@ export default function RemindersPage() {
   const navigate = useNavigate();
   const version = useDataVersion('reminders');
   const { updateReminder } = useReminders();
+  const { addToast } = useToast();
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
   const [error, setError] = useState(false);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -89,7 +91,7 @@ export default function RemindersPage() {
     const today = todayIn(tz);
     const clock = Date.now();
     const pending = all.filter((r) => !r.done);
-    const dueToday = pending.filter((r) => dayIn(r.due, tz) === today);
+    const dueToday = pending.filter((r) => dayIn(r.due, tz) <= today); // due today or overdue
     const snoozed = pending.filter((r) => r.snoozedUntil && new Date(r.snoozedUntil).getTime() > clock);
     const completedToday = all.filter((r) => r.done && dayIn(r.completedAt ?? r.due, tz) === today);
     const shown = filter === 'due' ? dueToday : filter === 'snoozed' ? snoozed : pending;
@@ -208,7 +210,7 @@ export default function RemindersPage() {
       ) : null}
 
       {editing ? (
-        <EditReminderFormModal reminder={reminderFromApi(editing)} onDismiss={() => setEditing(null)} onSubmit={onEditSave} onToast={() => {}} />
+        <EditReminderFormModal reminder={reminderFromApi(editing)} onDismiss={() => setEditing(null)} onSubmit={onEditSave} onToast={addToast} />
       ) : null}
 
       <ClioActions scope="reminders" timezone={tz} />

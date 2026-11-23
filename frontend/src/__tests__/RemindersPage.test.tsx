@@ -30,12 +30,15 @@ vi.mock('../copilot/actions', async (orig) => ({
   },
 }));
 const updateReminder = vi.fn();
+const addToast = vi.fn();
+vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ addToast }) }));
 vi.mock('../hooks/useReminders', () => ({ useReminders: () => ({ updateReminder }) }));
 vi.mock('../components/features/EditReminderFormModal', () => ({
-  default: ({ reminder, onSubmit }: { reminder: { id: string; dueDate: string }; onSubmit: (d: unknown) => void }) => (
+  default: ({ reminder, onSubmit, onDismiss, onToast }: { reminder: { id: string; dueDate: string }; onSubmit: (d: unknown) => Promise<void>; onDismiss: () => void; onToast: (m: string, t: string) => void }) => (
     <div role="dialog">
       <span>editing {reminder.id}</span>
-      <button onClick={() => onSubmit({ title: 'Renamed' })}>save-edit</button>
+      {/* mirrors the real modal: dismiss + success toast on resolve, error toast and stay open on reject */}
+      <button onClick={async () => { try { await onSubmit({ title: 'Renamed' }); onDismiss(); onToast('Reminder updated', 'success'); } catch (e) { onToast((e as Error).message, 'error'); } }}>save-edit</button>
     </div>
   ),
 }));
@@ -68,6 +71,7 @@ beforeEach(() => {
   listReminders.mockReset();
   apiFetch.mockReset();
   updateReminder.mockReset();
+  addToast.mockReset();
   chatProps = null;
   actionProps = null;
   settings();
@@ -226,5 +230,38 @@ describe('RemindersPage', () => {
     await waitFor(() => expect(updateReminder).toHaveBeenCalled());
     expect(updateReminder).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1', title: 'Renamed', description: 'bring card', dueDate: '2026-06-09T20:00:00.000Z', completed: false }));
     await waitFor(() => expect(listReminders).toHaveBeenCalled());
+  });
+
+  it('failed Edit save shows an error toast and keeps the modal open', async () => {
+    listReminders.mockResolvedValue([mk('e1')]);
+    updateReminder.mockRejectedValue(new Error('Failed to update reminder'));
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'T-e1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'save-edit' }));
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith('Failed to update reminder', 'error'));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('successful Edit save closes the modal with a success toast', async () => {
+    listReminders.mockResolvedValue([mk('e1')]);
+    updateReminder.mockResolvedValue({});
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'T-e1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'save-edit' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(addToast).toHaveBeenCalledWith('Reminder updated', 'success');
+  });
+
+  it('overdue reminders count as due: 1 overdue + 1 today + 1 completed today', async () => {
+    listReminders.mockResolvedValue([
+      mk('over', { due: '2026-06-01T20:00:00.000Z' }),
+      mk('today'),
+      mk('c', { done: true, completedAt: '2026-06-09T18:00:00.000Z' }),
+    ]);
+    renderPage();
+    expect(await screen.findByText('1 of 3 loops fulfilled today')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Due today 2$/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Due today/ }));
+    expect(screen.getByText('T-over')).toBeInTheDocument();
   });
 });
