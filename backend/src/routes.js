@@ -7,6 +7,7 @@ import { reminderRouter } from './controllers/reminderController.js';
 import { searchRouter } from './controllers/searchController.js';
 import { analyticsRouter } from './controllers/analyticsController.js';
 import { sessionRouter } from './controllers/sessionController.js';
+import { pushRouter } from './controllers/pushController.js';
 import { errorHandler } from './http.js';
 import { buildCopilotEndpoint } from './copilot/runtime.js';
 
@@ -16,6 +17,7 @@ export function registerRoutes(app, deps) {
   api.post('/auth/login', loginHandler(deps.auth));
   api.use(requireAuth(deps.auth));
   if (deps.shareSession) api.use(sessionRouter(deps));
+  if (deps.push && deps.scheduler && deps.config) api.use(pushRouter(deps));
   if (deps.settings) api.use(settingsRouter(deps));
   if (deps.daily) api.use(dailyRouter(deps));
   if (deps.reminders) api.use(reminderRouter(deps));
