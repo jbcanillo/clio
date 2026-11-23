@@ -17,18 +17,24 @@ const chat = {
   isAvailable: true,
 };
 let errorSubscribers: Array<(e: ErrorEvent) => void> = [];
+let statusSubscribers: Array<(e: { status: string }) => void> = [];
+type Sub = { onError?: (e: ErrorEvent) => void; onRuntimeConnectionStatusChanged?: (e: { status: string }) => void };
+const core = {
+  runtimeConnectionStatus: 'connected',
+  subscribe: (s: Sub) => {
+    if (s.onError) errorSubscribers.push(s.onError);
+    if (s.onRuntimeConnectionStatusChanged) statusSubscribers.push(s.onRuntimeConnectionStatusChanged);
+    return {
+      unsubscribe: () => {
+        errorSubscribers = errorSubscribers.filter(f => f !== s.onError);
+        statusSubscribers = statusSubscribers.filter(f => f !== s.onRuntimeConnectionStatusChanged);
+      },
+    };
+  },
+};
 
 vi.mock('@copilotkit/react-core', () => ({ useCopilotChatInternal: () => chat }));
-vi.mock('@copilotkit/react-core/v2/context', () => ({
-  useCopilotKit: () => ({
-    copilotkit: {
-      subscribe: (s: { onError?: (e: ErrorEvent) => void }) => {
-        if (s.onError) errorSubscribers.push(s.onError);
-        return { unsubscribe: () => { errorSubscribers = errorSubscribers.filter(f => f !== s.onError); } };
-      },
-    },
-  }),
-}));
+vi.mock('@copilotkit/react-core/v2/context', () => ({ useCopilotKit: () => ({ copilotkit: core }) }));
 
 const CHIPS = [{ label: 'Plan my day', prompt: 'Help me plan today' }];
 
@@ -48,6 +54,8 @@ beforeEach(() => {
   chat.isLoading = false;
   chat.isAvailable = true;
   errorSubscribers = [];
+  statusSubscribers = [];
+  core.runtimeConnectionStatus = 'connected';
 });
 
 describe('ClioChat composer', () => {
@@ -234,5 +242,79 @@ describe('ClioChat sheet mode', () => {
     await userEvent.click(screen.getByRole('button', { name: /conversation/i }));
     const dialog = screen.getByRole('dialog', { name: 'Clio · Reminders' });
     expect(within(dialog).getByText('earlier reply')).toBeInTheDocument();
+  });
+});
+
+describe('ClioChat availability', () => {
+  const view = () => <ClioChat scope="chat" placeholder="Talk to Clio" chips={CHIPS} mode="full" />;
+
+  it('explains a connection that had already failed before mounting', () => {
+    chat.isAvailable = false;
+    core.runtimeConnectionStatus = 'error';
+    render(view());
+    expect(screen.getByRole('alert')).toHaveTextContent("Clio isn't available. Check Settings.");
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+  });
+
+  it('shows a quiet Connecting state (no error) while connecting', () => {
+    chat.isAvailable = false;
+    core.runtimeConnectionStatus = 'connecting';
+    render(view());
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(/connecting/i);
+  });
+
+  it('switches to the explanation when the status changes to error, and clears when available', () => {
+    chat.isAvailable = false;
+    core.runtimeConnectionStatus = 'connecting';
+    const { rerender } = render(view());
+    act(() => statusSubscribers.forEach(f => f({ status: 'error' })));
+    expect(screen.getByRole('alert')).toHaveTextContent("Clio isn't available");
+    act(() => statusSubscribers.forEach(f => f({ status: 'connected' })));
+    chat.isAvailable = true;
+    rerender(view());
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/connecting/i)).toBeNull();
+  });
+
+  it('clears an earlier failure alert when the agent becomes available', () => {
+    chat.isAvailable = false;
+    const { rerender } = render(view());
+    fireError('runtime_info_fetch_failed');
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    chat.isAvailable = true;
+    rerender(view());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('ClioChat sheet focus', () => {
+  const sheet = () => <ClioChat scope="reminders" placeholder="Ask about reminders" chips={CHIPS} mode="sheet" sheetTitle="Clio · Reminders" />;
+
+  it('focuses the in-sheet composer after sending, and the page composer after closing', async () => {
+    render(sheet());
+    await userEvent.type(screen.getByPlaceholderText('Ask about reminders'), 'hi{Enter}');
+    const dialog = screen.getByRole('dialog', { name: 'Clio · Reminders' });
+    const inSheet = within(dialog).getByPlaceholderText('Ask about reminders');
+    expect(inSheet).toHaveFocus();
+    await userEvent.keyboard('more');
+    expect(inSheet).toHaveValue('more');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const page = screen.getByPlaceholderText('Ask about reminders');
+    expect(page).toHaveFocus();
+    expect(page).toHaveValue('more');
+  });
+
+  it('does not steal focus on close if the user focused something else', async () => {
+    chat.messages = [{ id: 'a1', role: 'assistant', content: 'earlier reply' }];
+    render(<><button>elsewhere</button>{sheet()}</>);
+    await userEvent.click(screen.getByRole('button', { name: /conversation/i }));
+    expect(within(screen.getByRole('dialog')).getByPlaceholderText('Ask about reminders')).toHaveFocus();
+    const elsewhere = screen.getByRole('button', { name: 'elsewhere' });
+    act(() => elsewhere.focus());
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(elsewhere).toHaveFocus();
   });
 });

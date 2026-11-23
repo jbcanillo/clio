@@ -1,7 +1,7 @@
 import { useCopilotChatInternal } from '@copilotkit/react-core';
 import { useCopilotKit } from '@copilotkit/react-core/v2/context';
 import { ArrowUp, MessageCircle, Sparkles, Square } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { emitDataChanged } from '../../lib/dataEvents';
 import type { Scope } from '../../lib/types';
 import { newUuid } from '../../lib/uuid';
@@ -61,18 +61,40 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
   const [failed, setFailed] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
+  const pageInputRef = useRef<HTMLTextAreaElement>(null);
+  const sheetInputRef = useRef<HTMLTextAreaElement>(null);
   const inputId = useId();
+
+  // Runtime connection status ('disconnected' | 'connecting' | 'connected' | 'error'),
+  // seeded on mount so a ClioChat mounted after the provider already failed still knows.
+  const [connStatus, setConnStatus] = useState<string>(() => String(copilotkit?.runtimeConnectionStatus ?? 'connecting'));
 
   // Surface run / connection failures from this provider's core.
   useEffect(() => {
     if (!copilotkit?.subscribe) return;
+    setConnStatus(String(copilotkit.runtimeConnectionStatus ?? 'connecting'));
     const sub = copilotkit.subscribe({
       onError: (e: CoreErrorEvent) => {
         if (isChatFailure(e)) setFailed(true);
       },
+      onRuntimeConnectionStatusChanged: ({ status }: { status: string }) => setConnStatus(String(status)),
     });
     return () => sub.unsubscribe();
   }, [copilotkit]);
+
+  // Sheet mode moves the composer into the sheet: keep focus on whichever textarea is showing.
+  const prevSheetOpen = useRef(sheetOpen);
+  useEffect(() => {
+    if (prevSheetOpen.current === sheetOpen) return;
+    prevSheetOpen.current = sheetOpen;
+    if (sheetOpen) {
+      sheetInputRef.current?.focus();
+    } else {
+      const active = document.activeElement;
+      const lost = !active || active === document.body || !active.isConnected;
+      if (lost) pageInputRef.current?.focus();
+    }
+  }, [sheetOpen]);
 
   // A run finished (true -> false): tell the screens to refetch, once per run.
   const wasLoading = useRef(isLoading);
@@ -130,21 +152,39 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
     }
   };
 
-  const alert = failed ? (
-    <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-ink">
-      <span>Clio couldn't answer. Check Settings or try again.</span>
-      {retryPrompt ? (
-        <button
-          type="button"
-          onClick={retry}
-          disabled={!isAvailable || isLoading}
-          className="shrink-0 rounded-full border border-error/30 px-3 py-1 text-xs font-semibold text-error disabled:opacity-50"
-        >
-          Retry
-        </button>
-      ) : null}
-    </div>
-  ) : null;
+  const alertCls = 'flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-ink';
+  let alert: ReactNode = null;
+  if (failed) {
+    alert = (
+      <div role="alert" className={alertCls}>
+        <span>Clio couldn't answer. Check Settings or try again.</span>
+        {retryPrompt ? (
+          <button
+            type="button"
+            onClick={retry}
+            disabled={!isAvailable || isLoading}
+            className="shrink-0 rounded-full border border-error/30 px-3 py-1 text-xs font-semibold text-error disabled:opacity-50"
+          >
+            Retry
+          </button>
+        ) : null}
+      </div>
+    );
+  } else if (!isAvailable && connStatus === 'error') {
+    // The runtime refused (e.g. 503: not configured). Derived from the live status,
+    // so it does not depend on having caught the one-shot error event.
+    alert = (
+      <div role="alert" className={alertCls}>
+        <span>Clio isn't available. Check Settings.</span>
+      </div>
+    );
+  } else if (!isAvailable) {
+    alert = (
+      <p role="status" className="px-1 text-xs text-ink-muted">
+        Connecting…
+      </p>
+    );
+  }
 
   const chipRow = chips.length ? (
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5">
@@ -163,7 +203,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
     </div>
   ) : null;
 
-  const composer = (
+  const renderComposer = (inputRef: RefObject<HTMLTextAreaElement>) => (
     <form
       onSubmit={e => {
         e.preventDefault();
@@ -175,6 +215,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
         Message Clio
       </label>
       <textarea
+        ref={inputRef}
         id={inputId}
         rows={Math.min(5, Math.max(1, draft.split('\n').length))}
         value={draft}
@@ -214,7 +255,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
         <div className="shrink-0 space-y-2 px-4 pb-4">
           {alert}
           {chipRow}
-          {composer}
+          {renderComposer(pageInputRef)}
         </div>
       </div>
     );
@@ -222,11 +263,11 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
 
   // Sheet mode: the composer lives on the page; the thread opens in a sheet.
   // The sheet is modal, so while it is open the composer moves inside it.
-  const controls = (
+  const renderControls = (inputRef: RefObject<HTMLTextAreaElement>) => (
     <div className="space-y-2">
       {alert}
       {chipRow}
-      {composer}
+      {renderComposer(inputRef)}
     </div>
   );
   return (
@@ -241,11 +282,11 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle }:
           Conversation
         </button>
       ) : null}
-      {sheetOpen ? null : controls}
+      {sheetOpen ? null : renderControls(pageInputRef)}
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={sheetTitle ?? 'Clio'}>
         <div className="flex flex-col gap-4">
           {thread}
-          <div className="sticky bottom-0 bg-card pt-2">{controls}</div>
+          <div className="sticky bottom-0 bg-card pt-2">{renderControls(sheetInputRef)}</div>
         </div>
       </Sheet>
     </div>
