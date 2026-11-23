@@ -7,9 +7,8 @@ import { NotePreview } from '../components/gen/NotePreview';
 import { ReminderCards } from '../components/gen/ReminderCards';
 import { SearchResults } from '../components/gen/SearchResults';
 import { apiFetch } from '../lib/api';
+import { addDays, todayIn } from '../lib/today';
 import type { Hit, MoodPoint, Reminder } from '../lib/types';
-
-const dayKey = (d: Date) => d.toLocaleDateString('en-CA');
 
 /** Saves a check-in: one request for the mood and one per non-empty text field. */
 export async function saveCheckin(date: string, v: CheckinValues): Promise<void> {
@@ -21,11 +20,11 @@ export async function saveCheckin(date: string, v: CheckinValues): Promise<void>
 }
 
 /** Registers what Clio can show in chat and what the app tells Clio about the screen. */
-export function ClioActions({ shareOn }: { shareOn: boolean }) {
+export function ClioActions({ shareOn, timezone }: { shareOn: boolean; timezone: string }) {
   const location = useLocation();
   useCopilotReadable({
     description: 'Current date and the screen the owner is looking at',
-    value: { today: dayKey(new Date()), route: location.pathname },
+    value: { today: todayIn(timezone), timezone, route: location.pathname },
   });
 
   useCopilotAction({
@@ -52,9 +51,8 @@ export function ClioActions({ shareOn }: { shareOn: boolean }) {
     parameters: [{ name: 'days', type: 'number', description: 'How many days back', required: false }],
     handler: async ({ days }) => {
       const n = Math.min(Math.max(Math.round(days ?? 14), 2), 90);
-      const to = new Date();
-      const from = new Date(Date.now() - (n - 1) * 86400000);
-      return apiFetch<MoodPoint[]>(`/api/analytics/mood?from=${dayKey(from)}&to=${dayKey(to)}`);
+      const to = todayIn(timezone);
+      return apiFetch<MoodPoint[]>(`/api/analytics/mood?from=${addDays(to, -(n - 1))}&to=${to}`);
     },
     render: ({ status, result }) =>
       status !== 'complete' ? <p className="text-sm opacity-70">Loading mood…</p> : <MoodChart series={(result as MoodPoint[]) ?? []} />,
@@ -80,7 +78,7 @@ export function ClioActions({ shareOn }: { shareOn: boolean }) {
           onSkip={() => respond?.('The owner skipped the check-in.')}
           onSubmit={async (v) => {
             try {
-              await saveCheckin(dayKey(new Date()), v);
+              await saveCheckin(todayIn(timezone), v);
               respond?.(`Check-in saved (mood ${v.mood}).`);
             } catch (e) {
               respond?.(`Saving failed: ${(e as Error).message}`);

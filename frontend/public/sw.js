@@ -50,7 +50,8 @@ self.addEventListener('message', (event) => {
     return handleTestNotification();
   }
 });
-self.addEventListener('push', (event) => {  console.log('Push notification received', event);  const options = {    body: 'Default notification body',    icon: '/favicon.ico',    badge: '/favicon.ico'  };  if (event.data) {    try {      const payload = event.data.json();      options.body = payload.body || options.body;      options.icon = payload.icon || options.icon;      options.badge = payload.badge || options.badge;      options.tag = payload.tag || 'push';      options.data = payload.data || {};      options.actions = payload.actions || [];    } catch (err) {      console.error('Error parsing push data', err);    }  }  event.waitUntil(    self.registration.showNotification('Numdum Reminder', options)  );};
+self.addEventListener('push', (event) => {  console.log('Push notification received', event);  const options = {    body: 'Default notification body',    icon: '/favicon.ico',    badge: '/favicon.ico'  };  let title = 'Clio';  if (event.data) {    try {      const payload = event.data.json();      options.body = payload.body || options.body;      options.icon = payload.icon || options.icon;      options.badge = payload.badge || options.badge;      options.tag = payload.tag || 'push';      options.data = Object.assign({}, payload.data || {}, payload.url ? { url: payload.url } : {});
+      title = payload.title || title;      options.actions = payload.actions || [];    } catch (err) {      console.error('Error parsing push data', err);    }  }  event.waitUntil(    self.registration.showNotification(title, options)  );};
 self.addEventListener('notificationclick', (event) => {
   const { action, reminderId } = event.notification.data || {};
   event.notification.close();
@@ -70,9 +71,14 @@ self.addEventListener('notificationclick', (event) => {
     });
   } else {
     event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        if (clients.length > 0) return clients[0].focus();
-        return self.clients.openWindow('/');
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        const target = (event.notification.data && event.notification.data.url) || '/';
+        if (clients.length > 0) {
+          const c = clients[0];
+          if (target !== '/' && 'navigate' in c) return c.navigate(target).then(w => (w || c).focus());
+          return c.focus();
+        }
+        return self.clients.openWindow(target);
       })
     );
   }

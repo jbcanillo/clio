@@ -1,4 +1,5 @@
 import ChatPage from './pages/ChatPage';
+import SettingsPage from './pages/SettingsPage';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Clock, BookOpen, ArrowLeft, Sun, Moon, Bell } from 'lucide-react';
@@ -33,7 +34,7 @@ function AppContent() {
   const getTabFromPath = (path) => {
     if (path === '/' || path === '') return 'chat';
     const tab = path.replace(/^\//, '');
-    return ['chat', 'calendar', 'list', 'stat'].includes(tab) ? tab : 'chat';
+    return ['chat', 'calendar', 'list', 'stat', 'settings'].includes(tab) ? tab : 'chat';
   };
 
   const activeTab = getTabFromPath(location.pathname);
@@ -369,6 +370,7 @@ function AppContent() {
                 />
               )}
               {activeTab === 'chat' && <ChatPage />}
+              {activeTab === 'settings' && <SettingsPage />}
               {activeTab === 'calendar' && (
                 <CalendarView
                   reminders={sortedReminders}

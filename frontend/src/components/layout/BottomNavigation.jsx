@@ -4,7 +4,8 @@ import {
   Calendar as CalendarIcon,
   List as ListIcon,
   BarChart3,
-  MessageCircle
+  MessageCircle,
+  Settings as SettingsIcon
 } from 'lucide-react';
 
 const BottomNavigation = ({ activeTab, onTabChange }) => {
@@ -44,7 +45,8 @@ const BottomNavigation = ({ activeTab, onTabChange }) => {
     { id: 'chat', label: 'Chat', Icon: MessageCircle },
     { id: 'calendar', label: 'Calendar', Icon: CalendarIcon },
     { id: 'list', label: 'List', Icon: ListIcon },
-    { id: 'stat', label: 'Stats', Icon: BarChart3 }
+    { id: 'stat', label: 'Stats', Icon: BarChart3 },
+    { id: 'settings', label: 'Settings', Icon: SettingsIcon }
   ];
 
   const handleTabChange = (tabId) => {

@@ -1,3 +1,4 @@
+import { registerPush } from '../lib/push';
 import { useState, useEffect } from 'react';
 
 export const useNotifications = () => {
@@ -52,43 +53,9 @@ export const useNotifications = () => {
   };
 
   const subscribeToNotifications = async () => {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      
-      if (!registration.pushManager) {
-        console.log('Push manager not available');
-        return false;
-      }
-
-      // Check if already subscribed
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        setIsSubscribed(true);
-        return true;
-      }
-
-      // Subscribe to push notifications
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
-      });
-
-      setIsSubscribed(true);
-      
-      // Send subscription to your backend
-      await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscription)
-      });
-
-      console.log('Notification subscription:', subscription);
-
-      return true;
-    } catch (error) {
-      console.error('Error subscribing to notifications:', error);
-      return false;
-    }
+    const result = await registerPush();
+    setIsSubscribed(result === 'granted');
+    return result === 'granted';
   };
 
   const unsubscribeFromNotifications = async () => {
