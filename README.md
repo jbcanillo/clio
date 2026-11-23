@@ -41,11 +41,13 @@ Check a running install with `CLIO_PASSWORD=... scripts/smoke.sh`.
 
 ## Using Clio
 
-- **Chat tab:** tell Clio what happened, a thought or an idea; ask for your reminders, a mood chart, or to search your notes.
-  It only claims something is saved after a tool confirmed it, and asks you to approve a draft note or a deletion.
+- **Four tabs:** **Chat**, **Diary**, **Reminders** and **Notes**. Each tab has its own text chat with Clio (no voice) in a teal and orange design, light and dark.
+  - **Chat:** tell Clio what happened, a thought or an idea; ask for your reminders, a mood chart, or to search your notes.
+  - **Diary:** your daily notes and mood, with a day strip and Clio's reflections.
+  - **Reminders:** due, upcoming, snoozed and done reminders you can complete or reschedule.
+  - **Notes:** your notes and checklists; tick items off directly.
 - **Daily check-in:** tap the notification (or ask Clio to start a check-in). Your mood and text go into today's note, then Clio asks a follow-up.
 - **+ Note:** quick capture that works offline. A badge shows how many notes are waiting to sync.
-- **Calendar / List / Stats:** your reminders, journal entries and analytics (these read and write the vault).
 - **Settings:** OpenRouter key and model, timezone, check-in times, notifications, and one-time import of the old numdum data from this browser.
 
 ### Privacy toggle
@@ -53,6 +55,10 @@ Check a running install with `CLIO_PASSWORD=... scripts/smoke.sh`.
 Diary entries (daily notes and journal entries) are marked `private: true`. Clio only retrieves past private entries when
 you turn on **Share private diary with Clio this session** on the Chat tab; it is off again at every new sign-in.
 What you type in the current conversation is always sent to the AI provider. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
+
+### How the chat works
+
+Each tab keeps its own conversation thread, so what you say in Reminders does not mix with Diary or Notes. Clio answers with interactive cards (reminders, checklists, mood charts, forms) that you can act on directly. Clio cannot delete anything without your approval: deletions always show a confirmation card first.
 
 ## Your vault
 

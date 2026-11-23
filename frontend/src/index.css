@@ -45,8 +45,6 @@
   --primary: var(--teal);
   --primary-hover: var(--teal-dark);
   --primary-light: rgba(13, 76, 85, 0.12);
-  --nebula-purple: var(--teal);
-  --nebula-blue: var(--teal-light);
   --success: #1F9D6B;
   --error: #BA1A1A;
   --border: var(--hairline);
@@ -83,8 +81,6 @@
   --primary: #3FA6B4;
   --primary-hover: #85BBC6;
   --primary-light: rgba(63, 166, 180, 0.2);
-  --nebula-purple: #3FA6B4;
-  --nebula-blue: #85BBC6;
   --border-focus: #3FA6B4;
   --glass-bg: rgba(14, 58, 65, 0.85);
 }

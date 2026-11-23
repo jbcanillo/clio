@@ -91,3 +91,11 @@ backend tests for the new endpoints; `npm run typecheck` and `npm test` in both 
 
 ## Left to the builder
 Exact component file layout, animation details, chip wording, icon choices, how thread ids are stored (localStorage vs. server), and the weekly-reflection stat formulas.
+
+## Implementation notes
+- Thread ids are `clio-<scope>-<uuid>`, kept in sessionStorage. History survives a reload within the tab session while the backend process is alive; it is lost when the backend restarts (history lives in backend memory per scope).
+- The Reminders "AI suggested" chip shipped as "Snoozed".
+- Overdue reminders that are not done count as "Due today".
+- `ClioChat` uses `useCopilotChatInternal` (see the spike doc).
+- `@copilotkit/react-ui` was removed (nothing imports it); `react-calendar` was removed with `CalendarView`. All `@copilotkit/*` packages stay pinned at 1.90.0.
+- Legacy screens (CalendarView, ReminderList/Item, Stat, JournalTab, CameraTab, ContactsTab, AddJournalEntryForm, ComingSoon, ReminderIndicator) and their analytics/media hooks were deleted.
