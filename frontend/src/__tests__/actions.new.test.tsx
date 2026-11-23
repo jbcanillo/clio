@@ -201,6 +201,24 @@ describe('propose_reschedule', () => {
     expect(api.updateReminder).not.toHaveBeenCalled();
     expect(api.listReminders).not.toHaveBeenCalled();
   });
+  it.each(['2026-12-01T09:00', '2026-12-01T09:00:00', '2026-12-01T09:00+08:00'])('%s (no seconds or no offset) responds invalid without the API', async (newDue) => {
+    const respond = vi.fn();
+    mount();
+    render(actions.propose_reschedule.renderAndWaitForResponse(exec(respond, { ...args, newDue })));
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('invalid'));
+    expect(api.updateReminder).not.toHaveBeenCalled();
+    expect(api.listReminders).not.toHaveBeenCalled();
+  });
+  it('a failing Accept responds once with the failure and keeps the inline error', async () => {
+    const respond = vi.fn();
+    api.updateReminder.mockRejectedValue(new Error('nope'));
+    mount();
+    render(actions.propose_reschedule.renderAndWaitForResponse(exec(respond, args)));
+    await userEvent.click(await screen.findByRole('button', { name: /accept/i }));
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('Reschedule failed: nope'));
+    expect(respond).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
   it('an unknown id responds not_found', async () => {
     const respond = vi.fn();
     mount();
@@ -243,6 +261,34 @@ describe('propose_tasks', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Create 2 reminders' }));
     await waitFor(() => expect(respond).toHaveBeenCalledWith('Creating failed: boom'));
     expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+  it('partial failure reports counts, keeps the error and offers no retry (no duplicates)', async () => {
+    const respond = vi.fn();
+    api.createReminder.mockResolvedValueOnce(reminder).mockResolvedValueOnce(reminder).mockRejectedValue(new Error('boom'));
+    mount();
+    render(actions.propose_tasks.renderAndWaitForResponse(exec(respond, { title: 't', tasks: ['a', 'b', 'c'] })));
+    await userEvent.click(await screen.findByRole('button', { name: 'Create 3 reminders' }));
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('created 2 of 3; failed: boom'));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /create/i })).toBeNull();
+    expect(api.createReminder).toHaveBeenCalledTimes(3);
+  });
+  it('an invalid timezone leads to a failure answer', async () => {
+    const respond = vi.fn();
+    mount();
+    render(actions.propose_tasks.renderAndWaitForResponse(exec(respond, args)));
+    const button = await screen.findByRole('button', { name: 'Create 2 reminders' });
+    const spy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(() => { throw new RangeError('Invalid time zone'); });
+    try { await userEvent.click(button); } finally { spy.mockRestore(); }
+    await waitFor(() => expect(respond).toHaveBeenCalledWith(expect.stringMatching(/^Creating failed: /)));
+    expect(api.createReminder).not.toHaveBeenCalled();
+  });
+  it('truncates long task strings to 200 characters', async () => {
+    mount();
+    render(actions.propose_tasks.renderAndWaitForResponse(exec(vi.fn(), { title: 't', tasks: ['x'.repeat(500)] })));
+    await userEvent.click(await screen.findByRole('button', { name: 'Create 1 reminders' }));
+    await waitFor(() => expect(api.createReminder).toHaveBeenCalled());
+    expect(api.createReminder.mock.calls[0][0].title).toHaveLength(200);
   });
   it('Not now responds declined and creates nothing', async () => {
     const respond = vi.fn();

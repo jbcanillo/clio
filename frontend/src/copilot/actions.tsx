@@ -143,7 +143,7 @@ function LiveNotes({ query }: { query: string }) {
 }
 
 const isIsoDateTime = (v: unknown): v is string =>
-  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !Number.isNaN(Date.parse(v));
+  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(v) && !Number.isNaN(Date.parse(v));
 
 /** Shows the reminder as stored on the server (never a model-supplied title) with the model's reason as the pitch. */
 function RescheduleProposal({ id, newDue, reason, respond }: { id: string; newDue: string; reason: string; respond?: (answer: string) => void }) {
@@ -174,7 +174,12 @@ function RescheduleProposal({ id, newDue, reason, respond }: { id: string; newDu
     <RescheduleSuggestion
       message={`Move "${state.title}" to ${new Date(newDue).toLocaleString()}? ${reason}`}
       onAccept={async () => {
-        await updateReminder(id, { due: newDue });
+        try {
+          await updateReminder(id, { due: newDue });
+        } catch (e) {
+          answer(`Reschedule failed: ${(e as Error).message}`);
+          throw e; // the card shows its inline alert
+        }
         answer('accepted');
       }}
       onKeep={() => answer('kept')}
@@ -185,6 +190,7 @@ function RescheduleProposal({ id, newDue, reason, respond }: { id: string; newDu
 /** Lists what will be created (model-proposed text) so the owner approves with full knowledge. */
 function TaskProposal({ title, tasks, timezone, respond }: { title: string; tasks: string[]; timezone: string; respond?: (answer: string) => void }) {
   const [error, setError] = useState(false);
+  const [finished, setFinished] = useState(false);
   const answered = useRef(false);
   const answer = (value: string) => {
     if (answered.current) return;
@@ -196,26 +202,30 @@ function TaskProposal({ title, tasks, timezone, respond }: { title: string; task
   return (
     <div className="space-y-2">
       <ul className="list-disc pl-5 text-sm">{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>
-      <AiActionBox
+      {finished ? null : <AiActionBox
         title={title}
         actions={[
           {
             label: `Create ${tasks.length} reminders`,
             onRun: async () => {
               setError(false);
-              const due = nextNineAm(timezone);
+              let created = 0;
               try {
-                for (const t of tasks) await createReminder({ title: t, due });
+                const due = nextNineAm(timezone);
+                for (const t of tasks) { await createReminder({ title: t, due }); created += 1; }
                 answer(`created ${tasks.length}`);
               } catch (e) {
+                // The model has been answered, so the card is finished: no retry, no duplicates.
                 setError(true);
-                answer(`Creating failed: ${(e as Error).message}`);
+                setFinished(true);
+                const msg = (e as Error).message;
+                answer(created > 0 ? `created ${created} of ${tasks.length}; failed: ${msg}` : `Creating failed: ${msg}`);
               }
             },
           },
           { label: 'Not now', onRun: () => answer('declined') },
         ]}
-      />
+      />}
       {error ? <p role="alert" className="text-sm text-error">Couldn't create the reminders.</p> : null}
     </div>
   );
@@ -379,7 +389,7 @@ function ProposeReschedule() {
     renderAndWaitForResponse: ({ status, args, respond }) => {
       if (status === 'complete') return quiet('Handled.');
       if (status !== 'executing' || !respond) return quiet('Thinking about a better time…');
-      return <RescheduleProposal id={String(args.id ?? '')} newDue={String(args.newDue ?? '')} reason={String(args.reason ?? '')} respond={respond} />;
+      return <RescheduleProposal id={String(args.id ?? '')} newDue={String(args.newDue ?? '')} reason={String(args.reason ?? '').slice(0, 300)} respond={respond} />;
     },
   });
   return null;
@@ -397,7 +407,7 @@ function ProposeTasks({ timezone }: ActionProps) {
       if (status === 'complete') return quiet('Handled.');
       if (status !== 'executing' || !respond) return quiet('Drafting tasks…');
       const tasks = (Array.isArray(args.tasks) ? args.tasks : [])
-        .filter((t): t is string => typeof t === 'string').map((t) => t.trim()).filter(Boolean).slice(0, 10);
+        .filter((t): t is string => typeof t === 'string').map((t) => t.trim().slice(0, 200)).filter(Boolean).slice(0, 10);
       return <TaskProposal title={String(args.title ?? '')} tasks={tasks} timezone={timezone} respond={respond} />;
     },
   });
