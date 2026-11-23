@@ -16,6 +16,7 @@ import { createMemoryService } from './services/memory/index.js';
 import { createShareSession } from './services/shareSession.js';
 import { createPushService } from './services/pushService.js';
 import { createScheduler } from './services/schedulerService.js';
+import { createSyncService } from './services/syncService.js';
 
 const config = loadConfig();
 fs.mkdirSync(config.vaultDir, { recursive: true });
@@ -39,5 +40,7 @@ const scheduler = createScheduler({ settings, daily, push, dataDir: config.dataD
 if (config.vapid.publicKey && config.vapid.privateKey) scheduler.start();
 else console.warn('VAPID keys not set: daily check-in notifications are disabled');
 
-const app = createApp({ openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
+const sync = createSyncService({ vault, dataDir: config.dataDir, memory });
+
+const app = createApp({ sync, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
 app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));

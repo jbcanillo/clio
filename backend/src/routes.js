@@ -8,6 +8,7 @@ import { searchRouter } from './controllers/searchController.js';
 import { analyticsRouter } from './controllers/analyticsController.js';
 import { sessionRouter } from './controllers/sessionController.js';
 import { pushRouter } from './controllers/pushController.js';
+import { syncRouter } from './controllers/syncController.js';
 import { errorHandler } from './http.js';
 import { buildCopilotEndpoint } from './copilot/runtime.js';
 
@@ -17,6 +18,7 @@ export function registerRoutes(app, deps) {
   api.post('/auth/login', loginHandler(deps.auth));
   api.use(requireAuth(deps.auth));
   if (deps.shareSession) api.use(sessionRouter(deps));
+  if (deps.sync) api.use(syncRouter(deps));
   if (deps.push && deps.scheduler && deps.config) api.use(pushRouter(deps));
   if (deps.settings) api.use(settingsRouter(deps));
   if (deps.daily) api.use(dailyRouter(deps));
