@@ -31,7 +31,7 @@ export function CircleCheck({ checked, onChange, label, disabled }: CircleCheckP
       } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       {checked ? (
-        <svg aria-hidden="true" viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" viewBox="0 0 12 12" className="h-3 w-3 text-on-teal" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 6.5l2.5 2.5 4.5-5.5" />
         </svg>
       ) : null}

@@ -37,7 +37,7 @@ export function WeeklyReflection({ days }: { days: DaySummary[] }) {
       ? 'No entries this week yet.'
       : `You wrote ${entries} ${noun} this week${avgMood ? `, with an average mood of ${avgMood}` : ''}.`;
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-teal to-[#0D4C55] p-4 text-white shadow-card space-y-3">
+    <div className="rounded-2xl bg-gradient-to-br from-teal-light to-[#0D4C55] p-4 text-white shadow-card space-y-3">
       <div className="text-sm font-semibold text-white">Weekly Reflection</div>
       <div className="grid grid-cols-3 gap-2">
         <Tile label="Reflections" value={`${entries} ${entries === 1 ? 'Entry' : 'Entries'}`} />

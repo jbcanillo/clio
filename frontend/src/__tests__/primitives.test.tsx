@@ -99,3 +99,26 @@ describe('dark-mode neutral tokens', () => {
     }
   });
 });
+
+describe('dark-mode teal token', () => {
+  const vars = ['--teal-rgb', '--on-teal-rgb'];
+  const root = css.match(/:root\s*\{[\s\S]*?\n\}/)![0];
+  const dark = css.match(/\.dark\s*\{[\s\S]*?\n\}/)![0];
+  const channel = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([0-9 ]+);`))?.[1].trim();
+
+  it('teal.DEFAULT and on-teal resolve to CSS variables; teal.light/dark stay static', () => {
+    expect(config).toMatch(/teal: \{ DEFAULT: 'rgb\(var\(--teal-rgb\) \/ <alpha-value>\)', light: '#146B78', dark: '#072B30' \}/);
+    expect(config).toContain("'on-teal': 'rgb(var(--on-teal-rgb) / <alpha-value>)'");
+  });
+  it('defines them in :root (light value unchanged) and .dark (matches --primary)', () => {
+    for (const v of vars) {
+      expect(root).toContain(`${v}:`);
+      expect(dark).toContain(`${v}:`);
+    }
+    expect(channel(root, '--teal-rgb')).toBe('13 76 85'); // #0D4C55
+    expect(channel(dark, '--teal-rgb')).toBe('63 166 180'); // #3FA6B4
+    expect(dark).toContain('--primary: #3FA6B4;');
+    expect(channel(root, '--on-teal-rgb')).toBe('255 255 255');
+    expect(channel(dark, '--on-teal-rgb')).toBe('7 43 48'); // white on #3FA6B4 is ~2.9:1, #072B30 is ~5.2:1
+  });
+});

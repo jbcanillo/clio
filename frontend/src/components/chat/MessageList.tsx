@@ -62,7 +62,7 @@ function TypingIndicator() {
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-3xl rounded-tr-md bg-teal px-4 py-3 text-sm leading-relaxed text-white shadow-card">
+      <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-3xl rounded-tr-md bg-teal px-4 py-3 text-sm leading-relaxed text-on-teal shadow-card">
         {text}
       </div>
       <span className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
@@ -86,7 +86,7 @@ function ClioMessage({ text, card }: { text: string; card: ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2.5">
-        <span aria-hidden="true" className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal text-white">
+        <span aria-hidden="true" className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal text-on-teal">
           <Sparkles size={16} />
         </span>
         <div className="min-w-0 flex-1">

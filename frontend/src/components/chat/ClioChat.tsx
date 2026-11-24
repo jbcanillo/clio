@@ -248,7 +248,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
         type="submit"
         aria-label="Send"
         disabled={!canSend}
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal text-white shadow-card transition-opacity disabled:opacity-40"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal text-on-teal shadow-card transition-opacity disabled:opacity-40"
       >
         <ArrowUp aria-hidden="true" size={18} />
       </button>

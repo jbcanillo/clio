@@ -37,7 +37,7 @@ export function CheckinForm({ onSubmit, onSkip }: Props) {
               role="radio"
               aria-checked={mood === value}
               aria-label={`Mood ${value}`}
-              className={`btn btn-circle ${mood === value ? 'border-0 bg-teal text-white' : 'btn-ghost bg-inset'}`}
+              className={`btn btn-circle ${mood === value ? 'border-0 bg-teal text-on-teal' : 'btn-ghost bg-inset'}`}
               onClick={() => setMood(value)}
             >
               {face}
@@ -59,7 +59,7 @@ export function CheckinForm({ onSubmit, onSkip }: Props) {
       </label>
       <div className="flex gap-2 justify-end">
         <button type="button" className="btn btn-ghost btn-sm text-[var(--primary)]" onClick={onSkip}>Skip today</button>
-        <button type="submit" className="btn btn-sm h-12 min-h-12 rounded-full border-0 bg-teal px-6 text-white hover:opacity-90 disabled:opacity-40" disabled={!mood}>Save check-in</button>
+        <button type="submit" className="btn btn-sm h-12 min-h-12 rounded-full border-0 bg-teal px-6 text-on-teal hover:opacity-90 disabled:opacity-40" disabled={!mood}>Save check-in</button>
       </div>
     </form>
   );

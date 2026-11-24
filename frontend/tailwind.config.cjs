@@ -10,7 +10,10 @@ module.exports = {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       colors: {
-        teal: { DEFAULT: '#0D4C55', light: '#146B78', dark: '#072B30' },
+        // teal.DEFAULT follows the theme (#0D4C55 light, #3FA6B4 dark); on-teal is the text/icon colour on it
+        // (white in light, deep teal in dark, since white on #3FA6B4 is only ~2.9:1).
+        teal: { DEFAULT: 'rgb(var(--teal-rgb) / <alpha-value>)', light: '#146B78', dark: '#072B30' },
+        'on-teal': 'rgb(var(--on-teal-rgb) / <alpha-value>)',
         ember: { DEFAULT: '#FF6B35', light: '#FA824C', soft: '#FFE8DF', tint: '#FFF8F5' },
         // Neutral tokens follow the theme: channels live in index.css (:root and .dark).
         canvas: 'rgb(var(--canvas-rgb) / <alpha-value>)',

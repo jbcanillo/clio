@@ -47,7 +47,7 @@ export function DayStrip({ days, selected, onSelect, onPrevWeek, onNextWeek }: P
               aria-label={label}
               aria-pressed={isSel}
               onClick={() => onSelect(date)}
-              className={`flex w-10 flex-col items-center gap-0.5 rounded-full py-2 text-xs ${isSel ? 'bg-teal text-white' : 'text-ink-soft hover:bg-inset'}`}
+              className={`flex w-10 flex-col items-center gap-0.5 rounded-full py-2 text-xs ${isSel ? 'bg-teal text-on-teal' : 'text-ink-soft hover:bg-inset'}`}
             >
               <span aria-hidden="true" className="font-semibold">{letter}</span>
               <span aria-hidden="true" className="text-sm font-bold">{num}</span>

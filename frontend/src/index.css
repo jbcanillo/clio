@@ -28,6 +28,8 @@
   --ink-rgb: 19 30 34;
   --ink-soft-rgb: 71 88 95;
   --ink-muted-rgb: 130 148 155;
+  --teal-rgb: 13 76 85;
+  --on-teal-rgb: 255 255 255;
 
   --shadow-card: 0 8px 24px -4px rgba(13, 76, 85, 0.05);
   --shadow-ai: 0 12px 32px -6px rgba(255, 107, 53, 0.12);
@@ -71,6 +73,8 @@
   --ink-rgb: 232 241 242;
   --ink-soft-rgb: 182 203 207;
   --ink-muted-rgb: 143 169 174;
+  --teal-rgb: 63 166 180;
+  --on-teal-rgb: 7 43 48;
   --canvas: #072B30;
   --card: #0E3A41;
   --inset: #13454D;

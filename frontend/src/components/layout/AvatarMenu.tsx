@@ -68,7 +68,7 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-teal font-display text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-teal font-display text-sm font-bold text-on-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
       >
         C
       </button>
