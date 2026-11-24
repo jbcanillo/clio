@@ -8,7 +8,7 @@ vi.mock('../lib/api', async (orig) => {
 });
 
 import { apiFetch } from '../lib/api';
-import { completeReminder, snoozeReminder, toggleChecklist, listReminders } from '../lib/clioApi';
+import { completeReminder, deleteReminder, snoozeReminder, toggleChecklist, listReminders } from '../lib/clioApi';
 import { emitDataChanged, useDataVersion } from '../lib/dataEvents';
 
 const mocked = vi.mocked(apiFetch);
@@ -23,6 +23,13 @@ describe('clioApi', () => {
     mocked.mockResolvedValue({ id: 'r1' });
     await completeReminder('r1');
     expect(mocked).toHaveBeenCalledWith('/api/reminders/r1/complete', { method: 'POST' });
+    expect(events).toBe(1);
+  });
+
+  it('deleteReminder encodes the id in the DELETE URL and emits once', async () => {
+    mocked.mockResolvedValue(undefined);
+    await deleteReminder('a/b?c');
+    expect(mocked).toHaveBeenCalledWith('/api/reminders/a%2Fb%3Fc', { method: 'DELETE' });
     expect(events).toBe(1);
   });
 

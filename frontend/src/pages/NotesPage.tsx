@@ -9,7 +9,7 @@ import { Sheet } from '../components/ui/Sheet';
 import { ClioActions } from '../copilot/actions';
 import { apiFetch } from '../lib/api';
 import { listNotes, toggleChecklist } from '../lib/clioApi';
-import { emitDataChanged, useDataVersion } from '../lib/dataEvents';
+import { useDataVersion } from '../lib/dataEvents';
 import type { NoteSummary } from '../lib/types';
 import { saveNote } from '../offline';
 
@@ -106,8 +106,7 @@ export default function NotesPage() {
 
   const submitNote = async (note: { title: string; body: string }) => {
     await saveNote(note); // throws on failure: QuickNote shows its error and the sheet stays open
-    setNewOpen(false);
-    emitDataChanged('notes');
+    setNewOpen(false); // saveNote / the outbox flush emit 'notes' once it reaches the server
   };
 
   const loading = notes === null && !error;

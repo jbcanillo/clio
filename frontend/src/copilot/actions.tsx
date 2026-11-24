@@ -13,8 +13,9 @@ import { RescheduleSuggestion } from '../components/gen/RescheduleSuggestion';
 import { SearchResults } from '../components/gen/SearchResults';
 import { WeeklyReflection } from '../components/gen/WeeklyReflection';
 import { apiFetch } from '../lib/api';
+import { emitDataChanged } from '../lib/dataEvents';
 import {
-  completeReminder, createReminder, dailyRange, listNotes, listReminders, snoozeReminder, toggleChecklist, updateReminder,
+  completeReminder, createReminder, dailyRange, deleteReminder, listNotes, listReminders, snoozeReminder, toggleChecklist, updateReminder,
 } from '../lib/clioApi';
 import { addDays, nextNineAm, todayIn } from '../lib/today';
 import type { DaySummary, Hit, MoodPoint, NoteSummary, Reminder, Scope } from '../lib/types';
@@ -25,13 +26,14 @@ const quiet = (text: string) => <p className="text-sm opacity-70">{text}</p>;
  * What the model is told after a "show ..." action is a fixed sentence. The cards below load their own
  * data for the owner, so note text never travels back to the model through a tool result.
  */
-function LiveReminders() {
+function LiveReminders({ timezone }: { timezone?: string }) {
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
   useEffect(() => { listReminders({ done: false }).then(setReminders).catch(() => setReminders([])); }, []);
   if (!reminders) return quiet('Looking up reminders…');
   return (
     <ReminderCards
       reminders={reminders}
+      timezone={timezone}
       onComplete={async (id) => { await completeReminder(id); }}
       onSnooze={async (id, until) => { await snoozeReminder(id, until); }}
     />
@@ -81,7 +83,7 @@ function DeleteReminderConfirm({ id, respond }: { id: string; respond?: (answer:
       onCancel={() => respond?.('cancelled')}
       onApprove={async () => {
         try {
-          await apiFetch(`/api/reminders/${id}`, { method: 'DELETE' });
+          await deleteReminder(id);
           respond?.('deleted');
         } catch (e) {
           respond?.(`Delete failed: ${(e as Error).message}`);
@@ -232,23 +234,28 @@ function TaskProposal({ title, tasks, timezone, respond }: { title: string; task
 }
 
 /** Saves a check-in: one request for the mood and one per non-empty text field. */
+/** Emits 'daily' afterwards, even on a partial failure (the mood may already be saved). */
 export async function saveCheckin(date: string, v: CheckinValues): Promise<void> {
-  await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { mood: v.mood } });
-  const fields: Array<['events' | 'thoughts' | 'ideas', string]> = [['events', v.events], ['thoughts', v.thoughts], ['ideas', v.ideas]];
-  for (const [section, text] of fields) {
-    if (text.trim()) await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { section, text } });
+  try {
+    await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { mood: v.mood } });
+    const fields: Array<['events' | 'thoughts' | 'ideas', string]> = [['events', v.events], ['thoughts', v.thoughts], ['ideas', v.ideas]];
+    for (const [section, text] of fields) {
+      if (text.trim()) await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { section, text } });
+    }
+  } finally {
+    emitDataChanged('daily');
   }
 }
 
 type ActionProps = { timezone: string; shareOn: boolean };
 
-function ShowReminders() {
+function ShowReminders({ timezone }: ActionProps) {
   useCopilotAction({
     name: 'show_reminders',
     description: "Show the owner's upcoming (not done) reminders as cards.",
     parameters: [],
     handler: async () => 'Showing the reminders to the owner.',
-    render: ({ status }) => (status === 'complete' ? <LiveReminders /> : quiet('Looking up reminders…')),
+    render: ({ status }) => (status === 'complete' ? <LiveReminders timezone={timezone} /> : quiet('Looking up reminders…')),
   });
   return null;
 }

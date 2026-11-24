@@ -21,11 +21,8 @@ function offsetMinutes(tz: string, at: Date): number {
   return Math.round((asUtc - Math.floor(at.getTime() / 1000) * 1000) / 60000);
 }
 
-/** The next 09:00 in `timezone` as an ISO string with that day's offset: today if it is before 09:00 there, else tomorrow. */
-export function nextNineAm(timezone: string, now: Date = new Date()): string {
-  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: timezone, hourCycle: 'h23', hour: '2-digit' }).format(now));
-  const local = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-  const day = hour < 9 ? local : addDays(local, 1);
+/** 09:00 on the calendar day `day` ('YYYY-MM-DD') in `timezone`, as an ISO string with that day's offset. */
+export function nineAmOn(timezone: string, day: string): string {
   // Offset in force at 09:00 local that day; refined once so DST-transition days resolve correctly.
   const guess = Date.parse(`${day}T09:00:00Z`);
   let off = offsetMinutes(timezone, new Date(guess));
@@ -35,4 +32,19 @@ export function nextNineAm(timezone: string, now: Date = new Date()): string {
   const hh = String(Math.floor(abs / 60)).padStart(2, '0');
   const mm = String(abs % 60).padStart(2, '0');
   return `${day}T09:00:00${sign}${hh}:${mm}`;
+}
+
+const localDay = (timezone: string, now: Date) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+
+/** The next 09:00 in `timezone` as an ISO string with that day's offset: today if it is before 09:00 there, else tomorrow. */
+export function nextNineAm(timezone: string, now: Date = new Date()): string {
+  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: timezone, hourCycle: 'h23', hour: '2-digit' }).format(now));
+  const local = localDay(timezone, now);
+  return nineAmOn(timezone, hour < 9 ? local : addDays(local, 1));
+}
+
+/** 09:00 on the next calendar day in `timezone`, whatever the time is now (a "Tomorrow 9:00" snooze). */
+export function tomorrowNineAm(timezone: string, now: Date = new Date()): string {
+  return nineAmOn(timezone, addDays(localDay(timezone, now), 1));
 }

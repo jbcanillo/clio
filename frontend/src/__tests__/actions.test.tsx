@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { ACTIONS_BY_SCOPE, ClioActions } from '../copilot/actions';
+import { ACTIONS_BY_SCOPE, ClioActions, saveCheckin } from '../copilot/actions';
 import type { Scope } from '../lib/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -151,5 +151,26 @@ describe('delete_reminder approval card', () => {
     render(actions.delete_reminder.renderAndWaitForResponse(props(respond, { id: 'nope', title: 'Anything' })));
     expect(await screen.findByText(/could not find that reminder/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
+  });
+});
+
+describe('saveCheckin', () => {
+  it("posts the mood and non-empty sections, then emits 'daily' (also on failure)", async () => {
+    const kinds: string[] = [];
+    const onChange = (e: Event) => kinds.push((e as CustomEvent).detail);
+    window.addEventListener('clio:data-changed', onChange);
+    try {
+      await saveCheckin('2026-11-23', { mood: 4, events: 'walk', thoughts: ' ', ideas: '' });
+      expect(apiFetch.mock.calls.map(([p, i]) => [p, i.json])).toEqual([
+        ['/api/daily/2026-11-23/entries', { mood: 4 }],
+        ['/api/daily/2026-11-23/entries', { section: 'events', text: 'walk' }],
+      ]);
+      expect(kinds).toEqual(['daily']);
+      apiFetch.mockImplementationOnce(async () => ({})).mockImplementationOnce(async () => { throw new Error('down'); });
+      await expect(saveCheckin('2026-11-23', { mood: 3, events: 'x', thoughts: '', ideas: '' })).rejects.toThrow('down');
+      expect(kinds).toEqual(['daily', 'daily']);
+    } finally {
+      window.removeEventListener('clio:data-changed', onChange);
+    }
   });
 });

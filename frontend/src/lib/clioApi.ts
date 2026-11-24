@@ -36,6 +36,11 @@ export async function createReminder(
   return r;
 }
 
+export async function deleteReminder(id: string): Promise<void> {
+  await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  emitDataChanged('reminders');
+}
+
 export async function listNotes(): Promise<NoteSummary[]> {
   return apiFetch<NoteSummary[]>('/api/notes');
 }

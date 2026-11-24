@@ -4,6 +4,7 @@ export type DataKind = 'reminders' | 'notes' | 'daily';
 export const DATA_CHANGED_EVENT = 'clio:data-changed';
 
 export function emitDataChanged(kind: DataKind | 'all'): void {
+  if (typeof window === 'undefined') return; // e.g. the outbox running under a node test environment
   window.dispatchEvent(new CustomEvent<DataKind | 'all'>(DATA_CHANGED_EVENT, { detail: kind }));
 }
 

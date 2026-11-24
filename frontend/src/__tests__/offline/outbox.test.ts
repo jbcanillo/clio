@@ -111,3 +111,31 @@ describe('outbox', () => {
     expect((await outbox.flush()).conflicts).toHaveLength(1);
   });
 });
+
+describe('outbox data-change bus', () => {
+  const bus = new EventTarget();
+  const kinds: string[] = [];
+  bus.addEventListener('clio:data-changed', (e) => kinds.push((e as CustomEvent).detail));
+  beforeEach(() => { kinds.length = 0; vi.stubGlobal('window', bus); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("emits 'notes' once when a flush applied at least one change", async () => {
+    const fetchFn = vi.fn(async (_u: string, init: RequestInit) => {
+      const id = JSON.parse(init.body as string).changes[0].id;
+      return ok([{ id, status: 'applied', path: 'Clio/Notes/x.md', hash: 'h' }]);
+    });
+    const outbox = createOutbox({ store: memoryStore(), getKey: async () => key, fetchFn });
+    await outbox.enqueue(change(1));
+    await outbox.enqueue(change(2));
+    await outbox.flush();
+    expect(kinds).toEqual(['notes']);
+  });
+  it('does not emit when nothing reached the server', async () => {
+    const empty = createOutbox({ store: memoryStore(), getKey: async () => key, fetchFn: vi.fn() });
+    await empty.flush();
+    const offline = createOutbox({ store: memoryStore(), getKey: async () => key, fetchFn: vi.fn(async () => { throw new TypeError('Failed to fetch'); }) });
+    await offline.enqueue(change(1));
+    await offline.flush();
+    expect(kinds).toEqual([]);
+  });
+});

@@ -152,12 +152,9 @@ describe('NotesPage', () => {
     expect(chatProps?.pendingPrompt).toMatchObject({ text: 'what is due soon?' });
   });
 
-  it('New note saves, closes the sheet and emits notes', async () => {
+  it('New note saves and closes the sheet (saveNote / the outbox emit notes, not the page)', async () => {
     renderPage();
     await screen.findByText('Groceries');
-    const events: unknown[] = [];
-    const on = (e: Event) => events.push((e as CustomEvent).detail);
-    window.addEventListener(DATA_CHANGED_EVENT, on);
     await userEvent.click(screen.getByRole('button', { name: 'New note' }));
     const dialog = screen.getByRole('dialog');
     await userEvent.type(within(dialog).getByLabelText('Title'), 'Idea');
@@ -165,8 +162,6 @@ describe('NotesPage', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save note' }));
     await waitFor(() => expect(saveNote).toHaveBeenCalledWith({ title: 'Idea', body: 'Body text' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(JSON.stringify(events)).toContain('notes');
-    window.removeEventListener(DATA_CHANGED_EVENT, on);
   });
 
   it('keeps the sheet open when saving fails', async () => {

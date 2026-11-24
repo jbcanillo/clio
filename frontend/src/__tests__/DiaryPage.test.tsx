@@ -91,9 +91,7 @@ describe('DiaryPage', () => {
     await waitFor(() => expect(container.querySelectorAll('li')[0].textContent).toContain('H-2026-11-17'));
   });
 
-  it('check-in saves for the selected date, emits daily and closes', async () => {
-    const seen = vi.fn();
-    window.addEventListener('clio:data-changed', seen);
+  it('check-in saves for the selected date and closes (saveCheckin itself emits daily)', async () => {
     render(<DiaryPage />);
     await userEvent.click((await screen.findAllByRole('button', { name: 'Check in' }))[0]);
     expect(screen.getByRole('dialog', { name: 'Daily check-in' })).toBeInTheDocument();
@@ -101,8 +99,6 @@ describe('DiaryPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save check-in' }));
     await waitFor(() => expect(saveCheckin).toHaveBeenCalledWith('2026-11-22', expect.objectContaining({ mood: 4 })));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect((seen.mock.calls[0][0] as CustomEvent).detail).toBe('daily');
-    window.removeEventListener('clio:data-changed', seen);
   });
 
   it('check-in failure keeps the form open with an error', async () => {

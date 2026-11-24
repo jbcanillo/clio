@@ -194,6 +194,35 @@ describe('RemindersPage', () => {
     expect(listReminders).toHaveBeenCalledWith();
   });
 
+  it('a hidden-but-mounted page refetches after a create through the legacy store', async () => {
+    const { default: store } = await import('../utils/store');
+    apiFetch.mockImplementation(async (path: string, init?: { method?: string }) => {
+      if (path === '/api/settings') return { timezone: 'America/Los_Angeles' };
+      if (path === '/api/reminders' && init?.method === 'POST') return { ...mk('new'), title: 'Created elsewhere', createdAt: NOW.toISOString() };
+      throw new Error('unexpected ' + path);
+    });
+    listReminders.mockResolvedValue([mk('a')]);
+    render(
+      <div hidden>
+        <MemoryRouter initialEntries={['/reminders']}><RemindersPage /></MemoryRouter>
+      </div>,
+    );
+    await waitFor(() => expect(listReminders).toHaveBeenCalledTimes(1));
+    listReminders.mockResolvedValue([mk('a'), { ...mk('new'), title: 'Created elsewhere' }]);
+    await act(async () => { await store.createReminder({ title: 'Created elsewhere', dueDate: '2026-06-09T20:00:00.000Z' }); });
+    await waitFor(() => expect(listReminders).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('Created elsewhere', {}, { hidden: true } as never)).toBeInTheDocument();
+  });
+
+  it('passes the owner timezone to the cards (due shown in that zone)', async () => {
+    settings('Asia/Tokyo');
+    listReminders.mockResolvedValue([mk('a', { due: '2026-06-10T00:00:00.000Z' })]);
+    renderPage();
+    await screen.findByText('T-a');
+    // 00:00 UTC is 09:00 in Tokyo.
+    await waitFor(() => expect(screen.getByText(/09:00/)).toBeInTheDocument());
+  });
+
   it('fetch failure shows a retryable alert and keeps the chat', async () => {
     listReminders.mockRejectedValueOnce(new Error('down'));
     renderPage();
@@ -221,7 +250,8 @@ describe('RemindersPage', () => {
 
   it('Edit opens the modal and saves the converted legacy shape', async () => {
     listReminders.mockResolvedValue([mk('e1', { notes: 'bring card' })]);
-    updateReminder.mockResolvedValue({});
+    // The real hook writes through utils/store, which emits 'reminders' on success (covered in store.test.js).
+    updateReminder.mockImplementation(async () => { emitDataChanged('reminders'); return {}; });
     renderPage();
     await userEvent.click(await screen.findByRole('button', { name: 'T-e1' }));
     expect(screen.getByText('editing e1')).toBeInTheDocument();

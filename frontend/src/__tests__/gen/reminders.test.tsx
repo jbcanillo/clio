@@ -35,6 +35,19 @@ describe('ReminderCards interactive', () => {
     expect(d.getMinutes()).toBe(0);
     expect(d.getTime()).toBeGreaterThan(Date.now());
   });
+  it("with the owner's timezone, Tomorrow 9:00 is 09:00 tomorrow there and due times use that zone", async () => {
+    const onSnooze = vi.fn();
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-23T00:30:00Z') }); // 08:30 on the 23rd in Tokyo
+    try {
+      render(<ReminderCards reminders={[{ ...base, due: '2026-11-23T00:00:00.000Z' }]} timezone="Asia/Tokyo" onComplete={() => {}} onSnooze={onSnooze} />);
+      expect(screen.getByText(/09:00/)).toBeInTheDocument(); // 00:00Z shown as 09:00 Tokyo time
+      await userEvent.click(screen.getByRole('button', { name: /snooze dentist/i }));
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Tomorrow 9:00' }));
+      expect(onSnooze).toHaveBeenCalledWith('r1', '2026-11-24T00:00:00.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('flags overdue unfinished, not snoozed or done', () => {
     const past = '2000-01-01T09:00:00.000Z';
     render(

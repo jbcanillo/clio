@@ -9,7 +9,7 @@ import { ClioActions } from '../copilot/actions';
 import { useReminders } from '../hooks/useReminders';
 import { apiFetch } from '../lib/api';
 import { completeReminder, listReminders, snoozeReminder } from '../lib/clioApi';
-import { emitDataChanged, useDataVersion } from '../lib/dataEvents';
+import { useDataVersion } from '../lib/dataEvents';
 import { todayIn } from '../lib/today';
 import type { Reminder } from '../lib/types';
 import { reminderFromApi } from '../utils/store';
@@ -105,8 +105,7 @@ export default function RemindersPage() {
   const onEditSave = useCallback(
     async (data: Record<string, unknown>) => {
       if (!editing) return;
-      await updateReminder({ ...reminderFromApi(editing), ...data });
-      emitDataChanged('reminders');
+      await updateReminder({ ...reminderFromApi(editing), ...data }); // the store emits 'reminders'
       setEditing(null);
     },
     [editing, updateReminder],
@@ -170,6 +169,7 @@ export default function RemindersPage() {
           <ReminderCards
             grouped
             reminders={view.shown}
+            timezone={tz}
             onComplete={async (id) => { await completeReminder(id); }}
             onSnooze={async (id, until) => { await snoozeReminder(id, until); }}
             onEdit={setEditing}

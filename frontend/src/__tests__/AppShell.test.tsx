@@ -25,7 +25,7 @@ vi.mock('../hooks/useReminders', () => ({
     reminders: [], loading: false, createReminder: vi.fn(), updateReminder: vi.fn(), completeReminder: vi.fn(),
   }),
 }));
-vi.mock('../utils/notifications', () => ({ initializeNotifications: vi.fn(), addNotificationForReminder: vi.fn() }));
+vi.mock('../utils/notifications', () => ({ updateNotificationForReminder: vi.fn(), removeNotificationForReminder: vi.fn() }));
 vi.mock('../utils/notificationSync', () => ({
   upsertAlarm: vi.fn(), deleteAlarm: vi.fn(), requestNotificationPermission: vi.fn(),
 }));

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { tomorrowNineAm } from '../../lib/today';
 import type { Reminder } from '../../lib/types';
 import { Chip } from '../ui/Chip';
 import { CircleCheck } from '../ui/CircleCheck';
@@ -9,22 +10,25 @@ interface Props {
   onSnooze: (id: string, until: string) => Promise<void> | void;
   onEdit?: (r: Reminder) => void;
   grouped?: boolean;
+  /** The owner's IANA timezone; due times and "Tomorrow 9:00" use it. Falls back to the browser's. */
+  timezone?: string;
 }
 
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const fmt = (iso: string, timeZone?: string) =>
+  new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone });
 
 const isOverdue = (r: Reminder, now: number) =>
   !r.done && new Date(r.due).getTime() < now && !(r.snoozedUntil && new Date(r.snoozedUntil).getTime() > now);
 
-function tomorrowNine(): string {
+function tomorrowNine(timezone?: string): string {
+  if (timezone) return new Date(tomorrowNineAm(timezone)).toISOString();
   const d = new Date();
   d.setDate(d.getDate() + 1);
   d.setHours(9, 0, 0, 0);
   return d.toISOString();
 }
 
-function Card({ r, onComplete, onSnooze, onEdit }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
+function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
   const [checked, setChecked] = useState(r.done);
   const [failed, setFailed] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -67,7 +71,7 @@ function Card({ r, onComplete, onSnooze, onEdit }: Omit<Props, 'reminders' | 'gr
             )}
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            <Chip tone={overdue ? 'ember' : 'neutral'}>{fmt(r.due)}</Chip>
+            <Chip tone={overdue ? 'ember' : 'neutral'}>{fmt(r.due, timezone)}</Chip>
             {r.priority === 'high' ? <Chip tone="ember">high</Chip> : <Chip>{r.priority}</Chip>}
             {r.repeat !== 'never' ? <Chip tone="teal">{r.repeat}</Chip> : null}
           </div>
@@ -88,7 +92,7 @@ function Card({ r, onComplete, onSnooze, onEdit }: Omit<Props, 'reminders' | 'gr
               <button role="menuitem" type="button" className="block w-full rounded-lg px-3 py-1.5 text-left text-sm text-ink hover:bg-inset" onClick={() => snooze(new Date(Date.now() + 3600_000).toISOString())}>
                 +1h
               </button>
-              <button role="menuitem" type="button" className="block w-full rounded-lg px-3 py-1.5 text-left text-sm text-ink hover:bg-inset" onClick={() => snooze(tomorrowNine())}>
+              <button role="menuitem" type="button" className="block w-full rounded-lg px-3 py-1.5 text-left text-sm text-ink hover:bg-inset" onClick={() => snooze(tomorrowNine(timezone))}>
                 Tomorrow 9:00
               </button>
             </div>
@@ -100,10 +104,10 @@ function Card({ r, onComplete, onSnooze, onEdit }: Omit<Props, 'reminders' | 'gr
   );
 }
 
-export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, grouped }: Props) {
+export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, grouped, timezone }: Props) {
   if (reminders.length === 0) return <p className="text-sm text-ink-soft">Nothing coming up.</p>;
   // Keyed by server-driven fields so a refetch (e.g. a repeating reminder advancing, same id) re-syncs card state.
-  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} />;
+  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} timezone={timezone} />;
   if (!grouped) return <ul className="space-y-2">{reminders.map(card)}</ul>;
   const high = reminders.filter((r) => r.priority === 'high');
   const rest = reminders.filter((r) => r.priority !== 'high');

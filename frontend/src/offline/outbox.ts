@@ -1,4 +1,5 @@
 import { getToken } from '../lib/api';
+import { emitDataChanged } from '../lib/dataEvents';
 import { open, seal } from './crypto';
 
 export interface NoteChange {
@@ -98,7 +99,15 @@ export function createOutbox({ store, getKey, fetchFn = (u, i) => fetch(u, i) }:
   }
 
   function flush(): Promise<FlushResult> {
-    if (!flushing) flushing = run().finally(() => { flushing = null; });
+    if (!flushing) {
+      flushing = run()
+        .then((r) => {
+          // Anything that reached the server (applied, or kept as a conflict copy) changes the notes list.
+          if (r.sent > 0 || r.conflicts.length > 0) emitDataChanged('notes');
+          return r;
+        })
+        .finally(() => { flushing = null; });
+    }
     return flushing;
   }
 

@@ -10,6 +10,7 @@ import InstallModal from './components/ui/InstallModal';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { ScopedCopilot } from './copilot/ScopedCopilot';
 import { useReminders } from './hooks/useReminders';
+import { completeReminder, snoozeReminder } from './lib/clioApi';
 import type { Scope } from './lib/types';
 import { outbox } from './offline';
 import { useOnlineSync } from './offline/useOnlineSync';
@@ -19,7 +20,9 @@ import NotesPage from './pages/NotesPage';
 import RemindersPage from './pages/RemindersPage';
 import SettingsPage from './pages/SettingsPage';
 import { deleteAlarm, requestNotificationPermission, upsertAlarm } from './utils/notificationSync';
-import { addNotificationForReminder, initializeNotifications } from './utils/notifications';
+import { removeNotificationForReminder, updateNotificationForReminder } from './utils/notifications';
+
+type LegacyReminder = { id: string; completed?: boolean; dueDate: string; snoozedUntil?: string | null };
 
 const SCOPES: Scope[] = ['chat', 'diary', 'reminders', 'notes'];
 const PAGES: Record<Scope, ReactNode> = {
@@ -44,8 +47,9 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast() as { addToast: (msg: string, type?: string) => void };
+  // Refetches on every 'reminders' data change, so the alarm and notification effects below run on fresh data.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { reminders, loading, createReminder, updateReminder, completeReminder } = useReminders() as any;
+  const { reminders, loading, createReminder } = useReminders() as any;
   const { pending } = useOnlineSync(outbox);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
 
@@ -65,29 +69,43 @@ function AppContent() {
   const activeScope: Scope | null = (SCOPES as string[]).includes(segment) ? (segment as Scope) : null;
   const goBack = (fallback: string) => () => (window.history.length > 1 ? navigate(-1) : navigate(fallback));
 
-  // Notifications and alarms follow the reminder list.
+  // Notifications and alarms follow the reminder list. Only reminders whose timing or state changed since the last
+  // sync are touched (so a refetch doesn't re-fire notifications for overdue ones); gone ones lose their alarm.
+  const synced = useRef(new Map<string, string>());
   useEffect(() => {
-    if (!loading && reminders.length > 0) initializeNotifications(reminders);
+    if (loading) return;
+    const seen = new Set<string>();
+    for (const r of reminders as LegacyReminder[]) {
+      seen.add(r.id);
+      const sig = `${Boolean(r.completed)}|${r.dueDate}|${r.snoozedUntil ?? ''}`;
+      if (synced.current.get(r.id) === sig) continue;
+      synced.current.set(r.id, sig);
+      if (r.completed) {
+        removeNotificationForReminder(r.id);
+        void deleteAlarm(r.id);
+      } else {
+        const snoozed = r.snoozedUntil && new Date(r.snoozedUntil).getTime() > Date.now();
+        updateNotificationForReminder(snoozed ? { ...r, dueDate: r.snoozedUntil } : r);
+        void upsertAlarm(r);
+      }
+    }
+    for (const id of [...synced.current.keys()]) {
+      if (seen.has(id)) continue;
+      synced.current.delete(id);
+      removeNotificationForReminder(id);
+      void deleteAlarm(id);
+    }
   }, [loading, reminders]);
 
+  // Actions fired from notification buttons. Narrow server calls (never a full PUT of a possibly stale copy);
+  // both emit 'reminders', which refreshes the list above and every mounted tab.
   useEffect(() => {
-    const sync = async () => {
-      if (!reminders || reminders.length === 0) return;
-      for (const r of reminders) {
-        if (r.completed) await deleteAlarm(r.id);
-        else await upsertAlarm(r);
-      }
+    const onComplete = (e: Event) => {
+      void completeReminder((e as CustomEvent).detail.reminderId).catch(() => toast.addToast("Couldn't complete that reminder", 'error'));
     };
-    void sync();
-  }, [reminders]);
-
-  // Actions fired from notification buttons.
-  useEffect(() => {
-    const onComplete = (e: Event) => completeReminder((e as CustomEvent).detail.reminderId);
     const onSnooze = (e: Event) => {
       const { reminderId, snoozeUntil } = (e as CustomEvent).detail;
-      const reminder = reminders.find((r: { id: string }) => r.id === reminderId);
-      if (reminder) updateReminder({ ...reminder, snoozedUntil: snoozeUntil });
+      void snoozeReminder(reminderId, new Date(snoozeUntil).toISOString()).catch(() => toast.addToast("Couldn't snooze that reminder", 'error'));
     };
     window.addEventListener('complete-reminder-app', onComplete);
     window.addEventListener('snooze-reminder-app', onSnooze);
@@ -95,7 +113,7 @@ function AppContent() {
       window.removeEventListener('complete-reminder-app', onComplete);
       window.removeEventListener('snooze-reminder-app', onSnooze);
     };
-  }, [reminders, completeReminder, updateReminder]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const enableNotifications = async () => {
     const result = await requestNotificationPermission();
@@ -186,8 +204,7 @@ function AppContent() {
                   onDismiss={goBack('/reminders')}
                   onToast={toast.addToast}
                   onSubmit={async (data: unknown) => {
-                    const created = await createReminder(data);
-                    if (created) addNotificationForReminder(created);
+                    await createReminder(data); // the store emits 'reminders': every tab and the alarm sync refetch
                     goBack('/reminders')();
                   }}
                 />

@@ -9,7 +9,7 @@ import { ClioActions, saveCheckin } from '../copilot/actions';
 import { useJournal } from '../hooks/useJournal';
 import { apiFetch } from '../lib/api';
 import { dailyRange } from '../lib/clioApi';
-import { emitDataChanged, useDataVersion } from '../lib/dataEvents';
+import { useDataVersion } from '../lib/dataEvents';
 import { addDays, todayIn } from '../lib/today';
 import type { DaySummary } from '../lib/types';
 
@@ -101,8 +101,7 @@ export default function DiaryPage() {
       setCheckinError(true);
       return;
     }
-    setCheckinOpen(false);
-    emitDataChanged('daily');
+    setCheckinOpen(false); // saveCheckin emits 'daily'
   };
 
   const loading = selected === null || (days === null && !error);
