@@ -21,7 +21,7 @@ export function CheckinForm({ onSubmit, onSkip }: Props) {
 
   return (
     <form
-      className="card bg-base-200 p-4 space-y-3"
+      className="rounded-2xl bg-card shadow-card p-4 space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (mood) onSubmit({ mood, events, thoughts, ideas });
@@ -37,7 +37,7 @@ export function CheckinForm({ onSubmit, onSkip }: Props) {
               role="radio"
               aria-checked={mood === value}
               aria-label={`Mood ${value}`}
-              className={`btn btn-circle ${mood === value ? 'btn-primary' : 'btn-ghost'}`}
+              className={`btn btn-circle ${mood === value ? 'border-0 bg-teal text-on-teal' : 'btn-ghost bg-inset'}`}
               onClick={() => setMood(value)}
             >
               {face}
@@ -45,21 +45,21 @@ export function CheckinForm({ onSubmit, onSkip }: Props) {
           );
         })}
       </div>
-      <label className="block text-sm">
+      <label className="block text-sm text-ink-soft">
         What happened today?
-        <textarea className="textarea textarea-bordered w-full mt-1" rows={2} value={events} onChange={(e) => setEvents(e.target.value)} />
+        <textarea className="textarea w-full mt-1 bg-inset border-hairline text-ink" rows={2} value={events} onChange={(e) => setEvents(e.target.value)} />
       </label>
-      <label className="block text-sm">
+      <label className="block text-sm text-ink-soft">
         Thoughts
-        <textarea className="textarea textarea-bordered w-full mt-1" rows={2} value={thoughts} onChange={(e) => setThoughts(e.target.value)} />
+        <textarea className="textarea w-full mt-1 bg-inset border-hairline text-ink" rows={2} value={thoughts} onChange={(e) => setThoughts(e.target.value)} />
       </label>
-      <label className="block text-sm">
+      <label className="block text-sm text-ink-soft">
         Ideas
-        <textarea className="textarea textarea-bordered w-full mt-1" rows={2} value={ideas} onChange={(e) => setIdeas(e.target.value)} />
+        <textarea className="textarea w-full mt-1 bg-inset border-hairline text-ink" rows={2} value={ideas} onChange={(e) => setIdeas(e.target.value)} />
       </label>
       <div className="flex gap-2 justify-end">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onSkip}>Skip today</button>
-        <button type="submit" className="btn btn-primary btn-sm" disabled={!mood}>Save check-in</button>
+        <button type="button" className="btn btn-ghost btn-sm text-[var(--primary)]" onClick={onSkip}>Skip today</button>
+        <button type="submit" className="btn btn-sm h-12 min-h-12 rounded-full border-0 bg-teal px-6 text-on-teal hover:opacity-90 disabled:opacity-40" disabled={!mood}>Save check-in</button>
       </div>
     </form>
   );

@@ -7,8 +7,14 @@ const entry = z.union([
   z.object({ mood: z.number().int().min(1).max(5), energy: z.number().int().min(1).max(5).optional() }).strict(),
 ]);
 
+const range = z.object({ from: dateParam, to: dateParam });
+
 export function dailyRouter({ daily, memory }) {
   const r = express.Router();
+  r.get('/daily', wrap(async (req, res) => {
+    const { from, to } = parse(range, req.query);
+    res.json(await daily.rangeSummaries(from, to));
+  }));
   r.get('/daily/:date', wrap(async (req, res) => {
     const date = parse(dateParam, req.params.date);
     const f = await daily.get(date);

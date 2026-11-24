@@ -9,6 +9,7 @@ export interface Reminder {
   repeat: Repeat;
   done: boolean;
   snoozedUntil?: string;
+  completedAt?: string;
   notes: string;
 }
 
@@ -25,4 +26,26 @@ export interface MoodPoint {
   date: string;
   mood: number | null;
   energy?: number | null;
+}
+
+export type Scope = 'chat' | 'diary' | 'reminders' | 'notes';
+
+export interface NoteSummary {
+  path: string;
+  title: string;
+  tags: string[];
+  snippet: string;
+  updated: string;
+  hash: string;
+  checklist: { index: number; text: string; done: boolean }[];
+}
+
+export interface DaySummary {
+  date: string;
+  mood: number | null;
+  energy: number | null;
+  headline: string;
+  /** True even when all section counts are zero (mood-only days). */
+  hasEntry: boolean;
+  sections: { thoughts: number; ideas: number; events: number };
 }

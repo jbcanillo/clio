@@ -77,8 +77,9 @@ describe('ReminderCards', () => {
     const onComplete = vi.fn();
     const onSnooze = vi.fn();
     render(<ReminderCards reminders={[r]} onComplete={onComplete} onSnooze={onSnooze} />);
-    await userEvent.click(screen.getByRole('button', { name: /complete dentist/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /complete dentist/i }));
     await userEvent.click(screen.getByRole('button', { name: /snooze dentist/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: '+1h' }));
     expect(onComplete).toHaveBeenCalledWith('a1');
     expect(onSnooze).toHaveBeenCalledWith('a1', expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/));
   });

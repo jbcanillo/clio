@@ -6,10 +6,10 @@ describe('API authentication', () => {
     const { app } = await makeApi();
     const routes = [
       ['get', '/api/settings'], ['put', '/api/settings'], ['post', '/api/settings/test-key'],
-      ['get', '/api/daily/2026-11-23'], ['post', '/api/daily/2026-11-23/entries'],
+      ['get', '/api/daily/2026-11-23'], ['get', '/api/daily?from=2026-11-22&to=2026-11-23'], ['post', '/api/daily/2026-11-23/entries'],
       ['get', '/api/reminders'], ['post', '/api/reminders'], ['post', '/api/reminders/x/complete'],
       ['post', '/api/reminders/x/snooze'], ['delete', '/api/reminders/x'],
-      ['get', '/api/search?q=a'], ['get', '/api/analytics/mood?from=2026-11-01&to=2026-11-02'],
+      ['get', '/api/notes'], ['get', '/api/search?q=a'], ['get', '/api/analytics/mood?from=2026-11-01&to=2026-11-02'],
     ];
     for (const [m, url] of routes) expect((await request(app)[m](url)).status, `${m} ${url}`).toBe(401);
   });
@@ -53,6 +53,19 @@ describe('daily notes', () => {
     const got = await as('get', '/api/daily/2026-11-23');
     expect(got.body.exists).toBe(true);
     expect(got.body.body).toContain('hi');
+  });
+  it('GET /api/daily returns range summaries and does not collide with /api/daily/:date', async () => {
+    const { as } = await makeApi();
+    await as('post', '/api/daily/2026-11-22/entries').send({ section: 'thoughts', text: 'hi' });
+    const res = await as('get', '/api/daily?from=2026-11-22&to=2026-11-23');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { date: '2026-11-22', mood: null, energy: null, headline: 'hi', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 0 } },
+      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } },
+    ]);
+    expect((await as('get', '/api/daily?from=bad&to=2026-11-23')).status).toBe(400);
+    expect((await as('get', '/api/daily?from=2026-11-23&to=2026-11-22')).status).toBe(400);
+    expect((await as('get', '/api/daily/2026-11-22')).body).toMatchObject({ date: '2026-11-22', exists: true });
   });
   it('rejects mood 9 and empty text with 400', async () => {
     const { as } = await makeApi();

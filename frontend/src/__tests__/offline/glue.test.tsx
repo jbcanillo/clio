@@ -32,6 +32,27 @@ describe('createNoteSaver', () => {
     await createNoteSaver(deps as never)({ title: 'T', body: 'B' });
     expect(post).toHaveBeenCalledWith(expect.objectContaining({ id: 'uuid-1', title: 'T' }));
   });
+  it("emits 'notes' after posting straight to the server, but not when only queued offline", async () => {
+    const kinds: string[] = [];
+    const onChange = (e: Event) => kinds.push((e as CustomEvent).detail);
+    window.addEventListener('clio:data-changed', onChange);
+    try {
+      const queued = saverDeps({ isOnline: () => false });
+      await createNoteSaver(queued.deps as never)({ title: 'T', body: 'B' });
+      expect(kinds).toEqual([]);
+      const direct = saverDeps();
+      direct.outbox.enqueue.mockRejectedValue(new Error('locked'));
+      await createNoteSaver(direct.deps as never)({ title: 'T', body: 'B' });
+      expect(kinds).toEqual(['notes']);
+      const failing = saverDeps();
+      failing.outbox.enqueue.mockRejectedValue(new Error('locked'));
+      failing.post.mockRejectedValue(new Error('HTTP 500'));
+      await expect(createNoteSaver(failing.deps as never)({ title: 'T', body: 'B' })).rejects.toThrow('HTTP 500');
+      expect(kinds).toEqual(['notes']);
+    } finally {
+      window.removeEventListener('clio:data-changed', onChange);
+    }
+  });
   it('without a key and offline, rejects so the form can ask the owner to sign in again', async () => {
     const { outbox, deps } = saverDeps({ isOnline: () => false });
     outbox.enqueue.mockRejectedValue(new Error('locked'));

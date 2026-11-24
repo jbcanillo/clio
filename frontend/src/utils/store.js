@@ -2,6 +2,13 @@
 // This module keeps the function names and object shapes of the old IndexedDB
 // layer (utils/db.js) so the existing hooks and components work unchanged.
 import { apiFetch } from '../lib/api';
+import { emitDataChanged } from '../lib/dataEvents';
+
+// Every successful write announces itself on the data-change bus so the
+// always-mounted tabs refetch (callers can't forget to).
+const changed = (kind) => (value) => { emitDataChanged(kind); return value; };
+const reminderChanged = changed('reminders');
+const dailyChanged = changed('daily');
 
 const REMINDER_KNOWN = new Set(['id', 'title', 'description', 'dueDate', 'priority', 'repeat', 'completed', 'completed_at', 'created_at', 'snoozedUntil']);
 const JOURNAL_KNOWN = new Set(['id', 'text', 'mood', 'createdAt']);
@@ -9,7 +16,7 @@ const JOURNAL_KNOWN = new Set(['id', 'text', 'mood', 'createdAt']);
 const pick = (obj, known) => Object.fromEntries(Object.entries(obj).filter(([k]) => !known.has(k)));
 const iso = (v) => new Date(v).toISOString();
 
-function reminderFromApi(r) {
+export function reminderFromApi(r) {
   return {
     ...(r.extras || {}),
     id: r.id,
@@ -40,14 +47,14 @@ function reminderToApi(r) {
 const getAllReminders = async () => (await apiFetch('/api/reminders')).map(reminderFromApi);
 
 const createReminder = async (data) =>
-  reminderFromApi(await apiFetch('/api/reminders', { method: 'POST', json: reminderToApi(data) }));
+  reminderChanged(reminderFromApi(await apiFetch('/api/reminders', { method: 'POST', json: reminderToApi(data) })));
 
 const updateReminder = async (data) => {
   const json = { ...reminderToApi(data), done: Boolean(data.completed), snoozedUntil: data.snoozedUntil ? iso(data.snoozedUntil) : null };
-  return reminderFromApi(await apiFetch(`/api/reminders/${data.id}`, { method: 'PUT', json }));
+  return reminderChanged(reminderFromApi(await apiFetch(`/api/reminders/${encodeURIComponent(data.id)}`, { method: 'PUT', json })));
 };
 
-const deleteReminder = async (id) => { await apiFetch(`/api/reminders/${id}`, { method: 'DELETE' }); };
+const deleteReminder = async (id) => { await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' }); reminderChanged(); };
 
 const toggleComplete = async (id) => {
   const current = (await apiFetch('/api/reminders')).find((r) => r.id === id);
@@ -55,7 +62,7 @@ const toggleComplete = async (id) => {
   const saved = current.done
     ? await apiFetch(`/api/reminders/${id}`, { method: 'PUT', json: { done: false } })
     : await apiFetch(`/api/reminders/${id}/complete`, { method: 'POST' });
-  return reminderFromApi(saved);
+  return reminderChanged(reminderFromApi(saved));
 };
 
 const deleteAllReminders = async () => {
@@ -72,7 +79,7 @@ export const createJournalEntry = async (entry) => {
   if (entry.mood !== undefined) json.mood = entry.mood;
   if (entry.createdAt !== undefined) json.createdAt = iso(entry.createdAt);
   if (Object.keys(json.extras).length === 0) delete json.extras;
-  return journalFromApi(await apiFetch('/api/journal', { method: 'POST', json }));
+  return dailyChanged(journalFromApi(await apiFetch('/api/journal', { method: 'POST', json })));
 };
 
 export const updateJournalEntry = async (id, changes) => {
@@ -81,10 +88,10 @@ export const updateJournalEntry = async (id, changes) => {
   if (changes.mood !== undefined) json.mood = changes.mood;
   const extras = pick(changes, JOURNAL_KNOWN);
   if (Object.keys(extras).length) json.extras = extras;
-  return journalFromApi(await apiFetch(`/api/journal/${id}`, { method: 'PUT', json }));
+  return dailyChanged(journalFromApi(await apiFetch(`/api/journal/${id}`, { method: 'PUT', json })));
 };
 
-export const deleteJournalEntry = async (id) => { await apiFetch(`/api/journal/${id}`, { method: 'DELETE' }); };
+export const deleteJournalEntry = async (id) => { await apiFetch(`/api/journal/${id}`, { method: 'DELETE' }); dailyChanged(); };
 
 export const deleteAllJournalEntries = async () => {
   for (const e of await apiFetch('/api/journal')) await deleteJournalEntry(e.id);

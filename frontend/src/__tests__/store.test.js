@@ -77,3 +77,37 @@ describe('journal over the API', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/journal/j1', { method: 'DELETE' });
   });
 });
+
+describe('data-change bus', () => {
+  const kinds = [];
+  const onChange = (e) => kinds.push(e.detail);
+  beforeEach(() => { kinds.length = 0; window.addEventListener('clio:data-changed', onChange); });
+  afterEach(() => window.removeEventListener('clio:data-changed', onChange));
+
+  it("every successful reminder write emits 'reminders'", async () => {
+    apiFetch.mockResolvedValue(apiReminder);
+    await remindersDB.createReminder({ title: 'Dentist', dueDate: '2026-12-01T09:00' });
+    await remindersDB.updateReminder({ id: 'r1', title: 'Dentist', dueDate: '2026-12-01T09:00' });
+    apiFetch.mockResolvedValueOnce(undefined);
+    await remindersDB.deleteReminder('r1');
+    apiFetch.mockResolvedValueOnce([apiReminder]).mockResolvedValueOnce({ ...apiReminder, done: true });
+    await remindersDB.toggleComplete('r1');
+    expect(kinds).toEqual(['reminders', 'reminders', 'reminders', 'reminders']);
+  });
+  it('does not emit when the write fails', async () => {
+    const boom = async () => { throw new Error('boom'); };
+    apiFetch.mockImplementationOnce(boom).mockImplementationOnce(boom);
+    let failures = 0;
+    try { await remindersDB.createReminder({ title: 'x', dueDate: '2026-12-01T09:00' }); } catch (e) { failures += e.message === 'boom' ? 1 : 0; }
+    try { await createJournalEntry({ text: 'x' }); } catch (e) { failures += e.message === 'boom' ? 1 : 0; }
+    expect(failures).toBe(2);
+    expect(kinds).toEqual([]);
+  });
+  it("journal writes emit 'daily'", async () => {
+    apiFetch.mockResolvedValue({ id: 'j1', text: 'Hi', createdAt: '2026-11-20T08:00:00.000Z' });
+    await createJournalEntry({ text: 'Hi' });
+    await updateJournalEntry('j1', { text: 'Hey' });
+    await deleteJournalEntry('j1');
+    expect(kinds).toEqual(['daily', 'daily', 'daily']);
+  });
+});

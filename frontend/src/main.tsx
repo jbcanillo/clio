@@ -3,21 +3,18 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { AuthGate } from './lib/auth';
-import { CopilotShell } from './copilot/CopilotShell';
+import { applyTheme, getInitialTheme } from './lib/theme';
 import './index.css';
 
-// Set DaisyUI luxury theme
-document.documentElement.setAttribute('data-theme', 'luxury');
+applyTheme(getInitialTheme());
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
     <AuthGate>
-      <CopilotShell>
-        <HashRouter>
-          <App />
-        </HashRouter>
-      </CopilotShell>
+      <HashRouter>
+        <App />
+      </HashRouter>
     </AuthGate>
   </React.StrictMode>
 );

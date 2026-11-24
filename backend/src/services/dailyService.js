@@ -66,19 +66,29 @@ export function createDailyService({ vault }) {
     }
   }
 
-  async function hasEntry(date) {
-    const f = await get(date);
+  function noteHasEntry(f) {
     if (!f) return false;
     if (f.frontmatter.mood !== undefined && f.frontmatter.mood !== null) return true;
     const content = f.body.split('\n').map((l) => l.trim()).filter((l) => l && !/^#{1,6}\s/.test(l) && l !== '-');
     return content.length > 0;
   }
 
-  async function moodSeries(from, to) {
+  async function hasEntry(date) {
+    return noteHasEntry(await get(date));
+  }
+
+  /** Yields each date key in [from, to], enforcing validity and the 366-day cap. */
+  function* eachDay(from, to) {
     if (!isValidDateKey(from) || !isValidDateKey(to) || to < from) throw new ValidationError('invalid range');
-    const out = [];
     for (let d = from, n = 0; d <= to; d = addDaysKey(d, 1), n++) {
       if (n >= MAX_RANGE_DAYS) throw new ValidationError('range too large (max 366 days)');
+      yield d;
+    }
+  }
+
+  async function moodSeries(from, to) {
+    const out = [];
+    for (const d of eachDay(from, to)) {
       const f = await get(d);
       const m = f?.frontmatter?.mood;
       const e = f?.frontmatter?.energy;
@@ -87,5 +97,43 @@ export function createDailyService({ vault }) {
     return out;
   }
 
-  return { append, get, hasEntry, moodSeries };
+  /** Bullet texts under each known `## ` section of a daily note body. */
+  function sectionBullets(body) {
+    const bullets = { thoughts: [], ideas: [], events: [] };
+    const byHeading = Object.fromEntries(Object.entries(SECTIONS).map(([k, v]) => [v, k]));
+    let current = null;
+    for (const raw of body.split('\n')) {
+      const line = raw.trim();
+      const h = /^##\s+(.*)$/.exec(line);
+      if (h) { current = byHeading[h[1].trim()] ?? null; continue; }
+      const b = /^-\s+(.+)$/.exec(line);
+      if (current && b) bullets[current].push(b[1].trim());
+    }
+    return bullets;
+  }
+
+  async function rangeSummaries(from, to) {
+    const out = [];
+    for (const d of eachDay(from, to)) {
+      const f = await get(d);
+      if (!f || f.parseError || !noteHasEntry(f)) {
+        out.push({ date: d, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } });
+        continue;
+      }
+      const b = sectionBullets(f.body);
+      const m = f.frontmatter.mood;
+      const e = f.frontmatter.energy;
+      out.push({
+        date: d,
+        mood: typeof m === 'number' ? m : null,
+        energy: typeof e === 'number' ? e : null,
+        headline: (b.events[0] ?? b.thoughts[0] ?? b.ideas[0] ?? '').slice(0, 120),
+        hasEntry: true,
+        sections: { thoughts: b.thoughts.length, ideas: b.ideas.length, events: b.events.length },
+      });
+    }
+    return out;
+  }
+
+  return { append, get, hasEntry, moodSeries, rangeSummaries };
 }

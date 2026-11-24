@@ -1,14 +1,18 @@
 import type { Hit } from '../../lib/types';
+import { Chip } from '../ui/Chip';
 
 export function SearchResults({ hits }: { hits: Hit[] }) {
-  if (hits.length === 0) return <p className="text-sm opacity-70">No matching notes.</p>;
+  if (hits.length === 0) return <p className="text-sm text-ink-soft">No matching notes.</p>;
   return (
     <ul className="space-y-2">
       {hits.map((h) => (
-        <li key={h.path} className="card bg-base-200 p-3">
-          <div className="font-medium">{h.title}{h.private && <span className="badge badge-sm ml-2">private</span>}</div>
-          <div className="text-xs opacity-70">{h.date ?? h.path}</div>
-          <div className="text-sm mt-1">{h.snippet}</div>
+        <li key={h.path} className="rounded-2xl border border-hairline bg-card p-3">
+          <div className="flex items-center gap-2 font-medium text-ink">
+            <span>{h.title}</span>
+            {h.private && <Chip>private</Chip>}
+          </div>
+          <div className="text-xs text-ink-muted">{h.date ?? h.path}</div>
+          <div className="mt-1 text-sm text-ink-soft">{h.snippet}</div>
         </li>
       ))}
     </ul>

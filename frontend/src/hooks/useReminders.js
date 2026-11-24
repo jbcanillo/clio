@@ -1,25 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import db from '../utils/store';
+import { useDataVersion } from '../lib/dataEvents';
 
 const useReminders = () => {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchReminders = async () => {
-      try {
-        const reminders = await db.getAllReminders();
-        setReminders(reminders);
-      } catch (err) {
-        setError('Failed to fetch reminders');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Refetch whenever anything (this app, another tab of the shell, or a Clio chat run) changes reminders.
+  const version = useDataVersion('reminders');
 
-    fetchReminders();
+  const refresh = useCallback(async () => {
+    try {
+      const reminders = await db.getAllReminders();
+      setReminders(reminders);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch reminders');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh, version]);
 
   const createReminder = async (reminderData) => {
     try {
@@ -78,6 +83,7 @@ const useReminders = () => {
     reminders,
     loading,
     error,
+    refresh,
     createReminder,
     updateReminder,
     deleteReminder,

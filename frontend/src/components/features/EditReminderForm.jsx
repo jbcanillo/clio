@@ -19,7 +19,10 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
   const formatDateTimeLocal = (date) => {
     if (!date) return '';
     const d = new Date(date);
-    return d.toISOString().slice(0, 16);
+    if (Number.isNaN(d.getTime())) return '';
+    // datetime-local wants local wall-clock time; toISOString() is UTC and shifted the due time by the offset.
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
