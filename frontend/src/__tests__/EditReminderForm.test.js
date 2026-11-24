@@ -36,6 +36,13 @@ describe('EditReminderForm', () => {
     expect(screen.getByLabelText(/Additional Details/i)).toHaveValue('Initial details');
   });
 
+  test('shows a stored UTC due time as local wall-clock time (not shifted by the offset)', () => {
+    const iso = '2026-03-20T10:00:00.000Z';
+    render(<EditReminderForm reminder={{ ...mockReminder, dueDate: iso }} onDismiss={onDismiss} onSubmit={onSubmit} />);
+    const value = screen.getByLabelText(/Due Date/i).value;
+    expect(new Date(value).getTime()).toBe(new Date(iso).getTime()); // datetime-local parses as local time
+  });
+
   test('submits updated data', async () => {
     render(
       <EditReminderForm

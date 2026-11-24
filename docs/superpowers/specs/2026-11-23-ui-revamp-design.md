@@ -99,3 +99,16 @@ Exact component file layout, animation details, chip wording, icon choices, how 
 - `ClioChat` uses `useCopilotChatInternal` (see the spike doc).
 - `@copilotkit/react-ui` was removed (nothing imports it); `react-calendar` was removed with `CalendarView`. All `@copilotkit/*` packages stay pinned at 1.90.0.
 - Legacy screens (CalendarView, ReminderList/Item, Stat, JournalTab, CameraTab, ContactsTab, AddJournalEntryForm, ComingSoon, ReminderIndicator) and their analytics/media hooks were deleted.
+
+### Not built (yet)
+- No two-pane tablet layout: every width uses the single-column phone layout with the bottom nav.
+- The ChecklistNote "Open in Notes" and DiaryReflection "Expand" affordances are not wired inside the tabs.
+- No inline note editing: notes are created via the quick-note sheet; existing notes are edited in Obsidian (only checklist toggles are written back).
+- No AI suggestion card on the Reminders screen itself; reschedule suggestions arrive through the scoped chat (`propose_reschedule`).
+- Chat history is lost when the backend restarts (see the thread-id note above).
+- Manual browser verification (light/dark, phone widths, notifications, offline flow) is still pending; coverage so far is automated tests.
+
+### Final-review fixes
+- Writes emit on the data-change bus from inside the data layer (`utils/store.js`, `saveNote` direct post, outbox flush when it applied a change, `saveCheckin`), so the always-mounted tabs refetch no matter which screen wrote.
+- App's reminder list refetches on `'reminders'` changes; alarms/in-page notifications re-sync only for reminders whose timing or state changed, and are cleared for completed or removed ones. Notification Complete/Snooze use the narrow `complete`/`snooze` endpoints.
+- `teal` is a theme token (`--teal-rgb`: #0D4C55 light, #3FA6B4 dark). Text on teal surfaces uses `on-teal` (white in light, #072B30 in dark, since white on #3FA6B4 is only ~2.9:1).

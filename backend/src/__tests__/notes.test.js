@@ -103,6 +103,33 @@ describe('PATCH /api/notes/checklist', () => {
     expect((await as('patch', '/api/notes/checklist').send({ ...ok, path: P, index: -1 })).status).toBe(400);
   });
 
+  it('returns 400 for backslash, nested and dot-segment paths', async () => {
+    const { as, h } = await setup();
+    h.writeRaw('Clio/Notes/sub/inner.md', '- [ ] a\n');
+    h.writeRaw('Clio/Daily/x.md', '- [ ] a\n');
+    const ok = { index: 0, checked: true, baseHash: 'a'.repeat(64) };
+    for (const p of ['Clio/Notes/..\\Daily\\x.md', 'Clio/Notes\\x.md', 'Clio/Notes/sub/inner.md', 'Clio/Notes/./x.md', 'Clio/Notes/..md', 'Clio/Notes/.md', 'Clio/Notes/x.md/', '/Clio/Notes/x.md']) {
+      const res = await as('patch', '/api/notes/checklist').send({ ...ok, path: p });
+      expect(res.status, p).toBe(400);
+    }
+    expect(fs.readFileSync(path.join(h.root, 'Clio/Daily/x.md'), 'utf8')).toBe('- [ ] a\n');
+  });
+
+  it('returns 404 for notes the list hides (private, conflict copies) and leaves them untouched', async () => {
+    const { as, h } = await setup();
+    const secret = '---\ntitle: Secret\nprivate: true\n---\n- [ ] hidden\n';
+    const conflict = '---\ntitle: Groceries\n---\n- [ ] copy\n';
+    h.writeRaw('Clio/Notes/secret.md', secret);
+    h.writeRaw('Clio/Notes/groceries.conflict-x.md', conflict);
+    const sha = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
+    const r1 = await as('patch', '/api/notes/checklist').send({ path: 'Clio/Notes/secret.md', index: 0, checked: true, baseHash: sha(secret) });
+    expect(r1.status).toBe(404);
+    const r2 = await as('patch', '/api/notes/checklist').send({ path: 'Clio/Notes/groceries.conflict-x.md', index: 0, checked: true, baseHash: sha(conflict) });
+    expect(r2.status).toBe(404);
+    expect(fs.readFileSync(path.join(h.root, 'Clio/Notes/secret.md'), 'utf8')).toBe(secret);
+    expect(fs.readFileSync(path.join(h.root, 'Clio/Notes/groceries.conflict-x.md'), 'utf8')).toBe(conflict);
+  });
+
   it('returns 404 for an unknown note', async () => {
     const { as } = await setup();
     const res = await as('patch', '/api/notes/checklist').send({ path: 'Clio/Notes/nope.md', index: 0, checked: true, baseHash: 'a'.repeat(64) });

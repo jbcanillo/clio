@@ -2,7 +2,10 @@ import { ValidationError } from '../errors.js';
 import { ConflictError } from './vaultService.js';
 const NOTES_DIR = 'Clio/Notes';
 const CHECK = /^\s*- \[( |x|X)\] (.*)$/;
-const NOTE_PATH_ERR = `path must be a markdown file inside ${NOTES_DIR}/`;
+const NOTE_PATH_ERR = `path must be a markdown file directly inside ${NOTES_DIR}/`;
+// Exactly Clio/Notes/<name>.md: no nested folders, no backslashes (Windows separators), no dot-segments.
+const NOTE_PATH = /^Clio\/Notes\/(?!\.\.?\.md$)[^/\\\u0000]+\.md$/;
+const notFound = () => Object.assign(new Error('Note not found'), { code: 'not_found' });
 
 const iso = (v) => {
   if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toISOString();
@@ -50,11 +53,12 @@ export function createNotesService({ vault }) {
 
   /** Rewrites only the marker of the nth checklist line (same CHECK + indexing as list()). */
   async function toggleChecklist(path, index, checked, baseHash) {
-    if (typeof path !== 'string' || !path.startsWith(`${NOTES_DIR}/`) || !path.endsWith('.md') || path.split('/').includes('..')) {
-      throw new ValidationError(NOTE_PATH_ERR);
-    }
+    if (typeof path !== 'string' || !NOTE_PATH.test(path)) throw new ValidationError(NOTE_PATH_ERR);
+    // Notes that list() hides (conflict copies, private notes) can't be edited through this route either.
+    if (path.includes('.conflict-')) throw notFound();
     const current = await vault.read(path);
-    if (!current) throw Object.assign(new Error('Note not found'), { code: 'not_found' });
+    if (!current) throw notFound();
+    if (current.frontmatter?.private === true) throw notFound();
     if (current.parseError) throw Object.assign(new Error('Note has unreadable frontmatter; fix it in Obsidian first'), { code: 'parse_error' });
     if (current.hash !== baseHash) throw new ConflictError(current);
     const parts = current.body.split(/(\r?\n)/); // keep separators so every other byte survives
