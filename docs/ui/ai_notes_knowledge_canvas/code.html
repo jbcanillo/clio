@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#004e59", "surface-variant": "#d8e4ea", "on-tertiary": "#ffffff", "tertiary-container": "#004c56", "on-primary-fixed": "#001f24", "on-primary": "#ffffff", "on-secondary": "#ffffff", "secondary": "#ab3500", "surface-container-lowest": "#ffffff", "surface-container-low": "#eaf6fb", "tertiary-fixed": "#a4eefd", "on-tertiary-container": "#74bdcb", "outline": "#70797a", "outline-variant": "#bfc8ca", "primary": "#00343b", "inverse-on-surface": "#e7f3f8", "tertiary": "#00343b", "inverse-surface": "#273236", "on-secondary-container": "#5d1900", "surface-container-highest": "#d8e4ea", "error": "#ba1a1a", "primary-container": "#0d4c55", "on-surface": "#121d21", "on-background": "#121d21", "surface-bright": "#f2fbff", "surface-container-high": "#deeaf0", "surface-tint": "#2f666f", "on-surface-variant": "#40484a", "secondary-container": "#fe6a34", "primary-fixed": "#b5ecf6", "surface-dim": "#d0dce1", "inverse-primary": "#99cfda", "on-secondary-fixed": "#390c00", "on-secondary-fixed-variant": "#832600", "on-primary-container": "#85bbc6", "surface": "#f2fbff", "on-tertiary-fixed": "#001f24", "on-primary-fixed-variant": "#104e57", "secondary-fixed": "#ffdbd0", "surface-container": "#e4f0f5", "on-error-container": "#93000a", "tertiary-fixed-dim": "#88d2e0", "primary-fixed-dim": "#99cfda", "background": "#f2fbff", "secondary-fixed-dim": "#ffb59d", "on-error": "#ffffff" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "gutter-sm": "0.75rem", "margin-sm": "1rem", "margin": "1.25rem", "space-md": "1rem", "space-xl": "2.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem" }, fontFamily: { "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Inter"], "headline-lg": ["Plus Jakarta Sans"], "body-lg": ["Inter"], "headline-xl-mobile": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-md": ["Inter"], "label-md": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"] }, fontSize: { "label-sm": ["10px", { lineHeight: "14px", letterSpacing: "0.04em", fontWeight: "700" }], "body-sm": ["13px", { lineHeight: "18px", letterSpacing: "0.005em", fontWeight: "400" }], "headline-lg": ["26px", { lineHeight: "34px", letterSpacing: "-0.02em", fontWeight: "600" }], "body-lg": ["16px", { lineHeight: "26px", letterSpacing: "-0.01em", fontWeight: "400" }], "headline-xl-mobile": ["30px", { lineHeight: "38px", letterSpacing: "-0.025em", fontWeight: "700" }], "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "-0.015em", fontWeight: "600" }], "headline-sm": ["17px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }], "body-md": ["14px", { lineHeight: "22px", letterSpacing: "0em", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "600" }], "label-lg": ["14px", { lineHeight: "18px", letterSpacing: "0.01em", fontWeight: "600" }], "headline-xl": ["36px", { lineHeight: "44px", letterSpacing: "-0.03em", fontWeight: "700" }] } } } }</script></head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="Symbiosis App Icon" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrB4UpQkRmGgyvNBBbU8uYxHnw1Lk9pWE9oV_KRmpOU1xIvuUvHy_kvgV4EX3t2chvoMBYHwnjPdQHQzxRBpTuua5ZG7jiVgu6OnOKKsJwqPbFIX8oUNFdeyN8vTFzaSgdJ_H4R02xUGrFLLWezDr0oZVoVp3r49nT_dWjAkdz0SPm6O5v2gHkdXBZixO2QaXUymTwWznOe0q5-1PtXm1p48gpbGXkbUpXyBrJ3j9D8G4A"/><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">Symbiosis</span><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-label-sm text-label-sm"><span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>AI Core</span></div><span class="font-label-md text-label-md text-on-surface-variant">Notes</span></div></div><div class="flex items-center gap-space-xs"><button aria-label="Search" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">search</span></button><a class="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors" data-path="settings" href="#"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaiHomylUCAfxvcWp89_bUzJRPVs7KYRc3-cjYnpkg8WduT3bkOTL54-X8nbGaTmmmgsNCQcQx78U6fyxj4FFchWMI9O3PgtSCCT61pm_lf83ZCuf4Yel8Pfcu_ilGLrd1opvuxO2_lYStBiO_w9f5cr-c3ntSYviWbu1bDzTBeDmb9zviJgikzoxTHC87sz_TJmpHlA2olxBcdAwVSy-yzpJ1fSWM2PGGV4OMpLZO"/></a></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface"><div class="flex flex-col w-full pb-10">
+<!-- Search & Dynamic Conversational Query Bar -->
+<section class="px-margin pt-space-md pb-space-sm">
+<div class="relative w-full rounded-full bg-surface-container-low p-1.5 shadow-sm transition-all focus-within:bg-surface-container-lowest focus-within:shadow-md">
+<div class="flex items-center gap-space-sm pl-space-sm pr-1">
+<span class="material-symbols-outlined text-primary text-[20px] select-none">search</span>
+<input class="w-full bg-transparent font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none" placeholder="Search notes or ask AI: 'What did I plan for Q3?'" type="text"/>
+<button aria-label="Synthesize Notes with AI" class="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container text-on-secondary shadow-sm hover:opacity-95 active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+</button>
+</div>
+</div>
+</section>
+<!-- AI Synthesized Topic Clusters (Smart Interactive Filter Pills) -->
+<section class="w-full overflow-x-auto no-scrollbar pt-space-xs pb-space-md">
+<div class="flex items-center gap-space-xs px-margin min-w-max" id="cluster-pills-container">
+<button class="cluster-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-label-md shadow-sm transition-transform active:scale-95" data-cluster="all" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary-container">arrow_back_ios_new</span>
+<span>All Notes</span>
+<span class="ml-0.5 px-1.5 py-0.2 rounded-full bg-surface-container-highest/20 font-label-sm text-label-sm">18</span>
+</button>
+<button class="cluster-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-md text-label-md shadow-sm hover:bg-surface-container-low transition-colors" data-cluster="tokens" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary-container">palette</span>
+<span>Design Tokens</span>
+</button>
+<button class="cluster-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-md text-label-md shadow-sm hover:bg-surface-container-low transition-colors" data-cluster="client" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">business_center</span>
+<span>Client Work</span>
+</button>
+<button class="cluster-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-md text-label-md shadow-sm hover:bg-surface-container-low transition-colors" data-cluster="epiphanies" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">lightbulb</span>
+<span>Epiphanies</span>
+</button>
+<button class="cluster-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-md text-label-md shadow-sm hover:bg-surface-container-low transition-colors" data-cluster="reading" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary-container">menu_book</span>
+<span>Reading List</span>
+</button>
+</div>
+</section>
+<!-- Pinned AI Dynamic Living Synthesis Card -->
+<section class="px-margin mb-space-md">
+<div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-container via-primary to-surface-container-highest p-space-md text-on-primary shadow-md">
+<!-- Ambient Glow Decorator -->
+<div class="absolute -right-12 -top-12 w-36 h-36 rounded-full bg-secondary-container/20 blur-2xl pointer-events-none"></div>
+<!-- Living Doc Meta Header -->
+<div class="relative flex items-center justify-between gap-space-xs mb-space-sm">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-lowest/15 backdrop-blur-md">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-primary-fixed uppercase tracking-wider">AI Living Document</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-primary-container">Syncing chat feed</span>
+</div>
+<!-- Title & Quick Summary -->
+<div class="relative mb-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-primary font-semibold mb-1">
+          Q3 Design Architecture &amp; Color Rules
+        </h2>
+<p class="font-body-sm text-body-sm text-primary-fixed-dim line-clamp-2">
+          Synthesized from 4 active project dialogues, journal entries, and the brand token manifesto.
+        </p>
+</div>
+<!-- Interactive Swatch Deck -->
+<div class="relative rounded-lg bg-surface-container-lowest/10 backdrop-blur-md p-space-sm mb-space-sm">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm text-primary-fixed">Brand Palette Rhythm</span>
+<span class="font-label-sm text-label-sm text-surface-variant font-mono">4 tokens verified</span>
+</div>
+<div class="grid grid-cols-4 gap-1.5 h-8 rounded-lg overflow-hidden p-0.5 bg-surface-container-lowest/10">
+<div class="h-full rounded bg-primary-container flex items-center justify-center group relative cursor-pointer" title="Deep Teal (#0D4C55)">
+<span class="font-label-sm text-[9px] text-on-primary-container opacity-80">Deep</span>
+</div>
+<div class="h-full rounded bg-surface-tint flex items-center justify-center group relative cursor-pointer" title="Slate Teal (#2F666F)">
+<span class="font-label-sm text-[9px] text-primary-fixed opacity-80">Slate</span>
+</div>
+<div class="h-full rounded bg-secondary-container flex items-center justify-center group relative cursor-pointer" title="Sunset Orange (#FE6A34)">
+<span class="font-label-sm text-[9px] text-on-secondary font-bold">Accent</span>
+</div>
+<div class="h-full rounded bg-secondary-fixed flex items-center justify-center group relative cursor-pointer" title="Warm Peach (#FFDBD0)">
+<span class="font-label-sm text-[9px] text-on-secondary-fixed font-semibold">Tint</span>
+</div>
+</div>
+</div>
+<!-- Quick AI Bullet Syntheses -->
+<div class="relative space-y-1.5 mb-space-md">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary-container mt-0.5 select-none">task_alt</span>
+<p class="font-body-sm text-body-sm text-on-primary">
+            Subdued surfaces rely on <strong>Deep Teal washes</strong>; reserve <strong>Sunset Orange</strong> exclusively for positive state transitions.
+          </p>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary-container mt-0.5 select-none">psychology</span>
+<p class="font-body-sm text-body-sm text-on-primary">
+            Cognitive friction reduced by keeping conversational bubbles rounded-xl with strict baseline grid alignment.
+          </p>
+</div>
+</div>
+<!-- Connected References Ribbon -->
+<div class="relative flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-xs text-on-primary-container">
+<span class="inline-flex items-center gap-1 font-label-md text-label-md">
+<span class="material-symbols-outlined text-[15px]">book_2</span> 3 diary links
+          </span>
+<span class="text-on-primary-container/40">•</span>
+<span class="inline-flex items-center gap-1 font-label-md text-label-md">
+<span class="material-symbols-outlined text-[15px]">check_circle</span> 2 tasks
+          </span>
+</div>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary-container text-on-secondary font-label-sm text-label-sm font-semibold shadow-sm hover:opacity-95 transition-opacity" type="button">
+<span>Expand</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Masonry / Dynamic Vertical Notes Stream -->
+<section class="px-margin flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">
+        Recent Sparks &amp; Scratchpads
+      </h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Live Sorting</span>
+</div>
+<!-- Note Card 1: Interactive Checklist & Microtasks -->
+<article class="rounded-xl bg-surface-container-lowest p-space-md shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between gap-space-xs mb-space-xs">
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-label-sm font-semibold">
+          #DesignTokens
+        </span>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>12m ago</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-space-sm">
+        Generative UI Interaction Patterns
+      </h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-sm">
+        Standardizing spring curves and state transitions across high-frequency agent interactions.
+      </p>
+<!-- Checklist Items -->
+<div class="space-y-2 mb-space-md" id="task-checklist">
+<label class="flex items-center gap- space-sm group cursor-pointer select-none">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 rounded-full bg-primary-container peer-checked:bg-primary-container flex items-center justify-center text-on-primary transition-transform peer-active:scale-90">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through peer-checked:text-on-surface-variant/70 ml-2">
+            Establish 120ms snap curve for active soundwave nodes
+          </span>
+</label>
+<label class="flex items-center gap- space-sm group cursor-pointer select-none">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 rounded-full bg-primary-container peer-checked:bg-primary-container flex items-center justify-center text-on-primary transition-transform peer-active:scale-90">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through peer-checked:text-on-surface-variant/70 ml-2">
+            Audit contrast ratio for dark mode generative pill tags
+          </span>
+</label>
+<label class="flex items-center gap- space-sm group cursor-pointer select-none">
+<input class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-on-primary transition-transform peer-active:scale-90">
+<span class="material-symbols-outlined text-[14px] opacity-0 peer-checked:opacity-100">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface ml-2">
+            Design fallback telemetry widget for poor network state
+          </span>
+</label>
+<label class="flex items-center gap- space-sm group cursor-pointer select-none">
+<input class="peer sr-only" type="checkbox"/>
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-on-primary transition-transform peer-active:scale-90">
+<span class="material-symbols-outlined text-[14px] opacity-0 peer-checked:opacity-100">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface ml-2">
+            Export JSON design tokens directly to Flutter app shell
+          </span>
+</label>
+</div>
+<!-- Card Meta Bottom -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-secondary-container">auto_awesome</span>
+<span class="font-label-sm text-label-sm">AI auto-prioritized 2 items</span>
+</div>
+<button class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-container transition-colors text-on-surface-variant" type="button">
+<span class="material-symbols-outlined text-[18px]">more_horiz</span>
+</button>
+</div>
+</article>
+<!-- Note Card 2: Books / Human-Computer Symbiosis with Orange Bookmark Ribbon -->
+<article class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-md shadow-sm transition-all hover:shadow-md">
+<!-- Orange Bookmark Ribbon -->
+<div class="absolute top-0 right-6 w-5 h-8 bg-secondary-container shadow-sm flex items-end justify-center pb-1">
+<div class="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[8px] border-b-surface-container-lowest transform translate-y-1"></div>
+</div>
+<div class="flex items-center gap-space-xs mb-space-xs">
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-primary-container font-label-sm text-label-sm font-semibold">
+          #ReadingList
+        </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">• 3 Recommendations</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-space-xs pr-8">
+        Books on Human-Computer Symbiosis
+      </h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+        Key texts exploring how ambient cognitive software augments natural creative flow.
+      </p>
+<!-- Mini Book Showcase Grid -->
+<div class="grid grid-cols-3 gap-space-sm mb-space-md">
+<!-- Book 1 -->
+<div class="flex flex-col gap-1.5">
+<div class="relative w-full aspect-[3/4] rounded-lg overflow-hidden shadow-sm bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="Editorial book cover of The Design of Everyday Things, minimalist graphic design with clean typography and deep teal elements, high quality studio aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1v-0NNmGq-wXKxgo6CJrn3B0LnKxVwzeWRzPYl0DicEOvdP7RMoA0NtlTBE_mnJ07Gux3X-dAOQ8Zr6Dw7pG_Dy4XH5yMwNCCrdITIigdskCKrHVoNcrlD0xAIMBYQWFdNi67TckE9x-zw_Nzl2_2dkqU6VRFn7YbWxHcor1S5yIO0nzX5J0WBnrMa6xnBhaY8yMs1--fojAfbyKlMuCMeSgEALcNnWX0mrxs2NHU"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Everyday Things</span>
+<span class="font-body-sm text-[11px] text-on-surface-variant">D. Norman</span>
+</div>
+<!-- Book 2 -->
+<div class="flex flex-col gap-1.5">
+<div class="relative w-full aspect-[3/4] rounded-lg overflow-hidden shadow-sm bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="Contemporary book cover titled Cybernetic Minds, artistic geometric shapes with glowing sunset orange accents and dark slate styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBl_UB_ltfXJA-AIuVROHObUFARYQB8Wcke6Qn3dBi04xHEvc-oOx5WXS0aFK0oUTgdJyxlIleqQtkrILda1_cs6_gILxjUnFAHjbvHX-2ZL_FbyM-Mr_zP3UATEtM5N8ysuepBLHDt55MRunMYKMvsufnM1QnTRNEZQZPA5XFlcR2TWqxIRDqw_0bphfBQ0ljzXfJzff7F6P2t7ImLADWSFhjORqfdF1x6BERL6LmN"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Man-Computer Symbiosis</span>
+<span class="font-body-sm text-[11px] text-on-surface-variant">J. Licklider</span>
+</div>
+<!-- Book 3 -->
+<div class="flex flex-col gap-1.5">
+<div class="relative w-full aspect-[3/4] rounded-lg overflow-hidden shadow-sm bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="Minimalist philosophy book cover titled Augmenting Intellect, serene abstract wave patterns in light sage and soft amber colors, studio photography lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwYKrj0OK5WXxotaNfZPi4y5Sy6c_tjga2GUiTdxTDv_LClnf_vh6IurW1Q0xaoBQYDlciB2CCuRuj9zbX1S1viGaANEzsYVNkO0LKf2I97oo8F97NslmpoE3QB6HA0gbDUw6vBNm6u4QCrQWGKxGxQN-nbBAukj6klImpgG_mLumEx6NOQbP1lmx89mM0GpmEjp3htWLtOAcMYMLUFdWQrFmaE9OGzUjVjJ-2m-71"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Augmenting Human Intellect</span>
+<span class="font-body-sm text-[11px] text-on-surface-variant">D. Engelbart</span>
+</div>
+</div>
+<!-- Quick AI Extract -->
+<div class="rounded-lg bg-surface-container-low p-space-sm flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-secondary-container select-none">format_quote</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          "The hopeful perspective is that in not too many years, human brains and computing machines will be coupled together very tightly."
+        </p>
+</div>
+</article>
+<!-- Note Card 3: Meal & Grocery Brainstorm with AI Recipe Suggestion -->
+<article class="rounded-xl bg-surface-container-lowest p-space-md shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between gap-space-xs mb-space-xs">
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-primary font-label-sm text-label-sm font-semibold">
+          #EverydayLife
+        </span>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span>Synced yesterday</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-space-xs">
+        Weekly Meal &amp; Grocery Brainstorm
+      </h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-sm">
+        Quick pantry audit from camera snapshot and dinner goals.
+      </p>
+<!-- Two-Column Ingredients Matrix -->
+<div class="grid grid-cols-2 gap-space-sm mb-space-md p-space-sm rounded-lg bg-surface-container-low">
+<div>
+<span class="font-label-sm text-label-sm text-primary font-bold uppercase tracking-wider block mb-1">
+            Pantry Verified
+          </span>
+<ul class="space-y-1 font-body-sm text-body-sm text-on-surface">
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+              Sourdough loaf
+            </li>
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+              Baby arugula &amp; chives
+            </li>
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+              Greek feta &amp; olives
+            </li>
+</ul>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-secondary font-bold uppercase tracking-wider block mb-1">
+            Need to Restock
+          </span>
+<ul class="space-y-1 font-body-sm text-body-sm text-on-surface">
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+              Cold-pressed olive oil
+            </li>
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+              Smoked sea salt
+            </li>
+<li class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+              Organic walnuts
+            </li>
+</ul>
+</div>
+</div>
+<!-- AI Recipe Suggestion Dynamic Pill -->
+<div class="flex items-center justify-between p-space-sm rounded-lg bg-secondary-fixed/50 hover:bg-secondary-fixed transition-colors cursor-pointer group">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-on-secondary flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[16px]">restaurant</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-secondary-container uppercase tracking-wide block">AI Recipe Suggestion</span>
+<span class="font-label-md text-label-md text-on-secondary-fixed font-semibold">Warm Feta &amp; Toasted Walnut Tartine</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary-container group-hover:translate-x-0.5 transition-transform text-[20px]">chevron_right</span>
+</div>
+</article>
+</section>
+<!-- Floating Action Button: "New AI Note" -->
+<div class="fixed bottom-20 right-4 z-40">
+<button class="flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-secondary-container text-on-secondary font-label-lg text-label-lg font-bold shadow-xl shadow-secondary-container/25 hover:brightness-105 active:scale-95 transition-all" id="new-note-fab" type="button">
+<div class="relative flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</div>
+<span>New AI Note</span>
+<span class="material-symbols-outlined text-[16px] text-secondary-fixed">auto_awesome</span>
+</button>
+</div>
+</div>
+<script>
+  // Simple interactive client-side handler for smart cluster pills
+  document.addEventListener('DOMContentLoaded', () => {
+    const pills = document.querySelectorAll('.cluster-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => {
+          p.classList.remove('bg-primary', 'text-on-primary');
+          p.classList.add('bg-surface-container-lowest', 'text-on-surface-variant');
+        });
+        pill.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant');
+        pill.classList.add('bg-primary', 'text-on-primary');
+      });
+    });
+
+    // Tactile toggle for interactive microtasks checklist
+    const checklist = document.getElementById('task-checklist');
+    if (checklist) {
+      checklist.addEventListener('change', (e) => {
+        if (e.target && e.target.type === 'checkbox') {
+          const parent = e.target.closest('label');
+          const checkIcon = parent.querySelector('.material-symbols-outlined');
+          const checkDiv = parent.querySelector('div');
+          const labelText = parent.querySelector('span:not(.material-symbols-outlined)');
+          
+          if (e.target.checked) {
+            checkDiv.classList.remove('bg-surface-container-high');
+            checkDiv.classList.add('bg-primary-container', 'text-on-primary');
+            checkIcon.classList.remove('opacity-0');
+            labelText.classList.add('line-through', 'text-on-surface-variant/70');
+            labelText.classList.remove('text-on-surface');
+          } else {
+            checkDiv.classList.add('bg-surface-container-high');
+            checkDiv.classList.remove('bg-primary-container', 'text-on-primary');
+            checkIcon.classList.add('opacity-0');
+            labelText.classList.remove('line-through', 'text-on-surface-variant/70');
+            labelText.classList.add('text-on-surface');
+          }
+        }
+      });
+    }
+  });
+</script></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-container-lowest/85 backdrop-blur-xl shadow-[0_-4px_20px_rgba(13,76,85,0.06)]" data-active-classes="text-primary-container font-semibold"><div class="flex justify-around items-center h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] py-1 text-on-surface-variant hover:text-primary transition-colors" data-path="chat-ai" href="#"><span class="material-symbols-outlined text-[24px]">auto_awesome</span><span class="font-label-sm text-label-sm tracking-tight">Chat AI</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] py-1 text-on-surface-variant hover:text-primary transition-colors" data-path="diary" href="#"><span class="material-symbols-outlined text-[24px]">book_2</span><span class="font-label-sm text-label-sm tracking-tight">Diary</span></a><a class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] py-1 text-on-surface-variant hover:text-primary transition-colors" data-path="reminders" href="#"><span class="material-symbols-outlined text-[24px]">alarm</span><span class="font-label-sm text-label-sm tracking-tight">Reminders</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] py-1 transition-colors text-primary-container font-semibold" data-path="notes" href="#"><span class="material-symbols-outlined text-[24px]">sticky_note_2</span><span class="font-label-sm text-label-sm tracking-tight">Notes</span></a></div></nav></body></html>

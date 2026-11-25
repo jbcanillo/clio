@@ -85,8 +85,8 @@ export const useNotifications = () => {
     try {
       const notification = new Notification(title, {
         body: options.body || '',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/pwa-192x192.png',
+        badge: '/pwa-192x192.png',
         tag: options.tag || 'reminder',
         data: options.data || {},
         actions: options.actions || [],
@@ -146,8 +146,8 @@ export const scheduleReminderNotification = (reminder) => {
       try {
         new Notification(`Reminder: ${reminder.title}`, {
           body: reminder.description || 'Time to complete your reminder',
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
+          icon: '/pwa-192x192.png',
+          badge: '/pwa-192x192.png',
           tag: `reminder-${reminder.id}`,
           data: {
             reminderId: reminder.id,
@@ -157,12 +157,12 @@ export const scheduleReminderNotification = (reminder) => {
             {
               action: 'complete',
               title: 'Complete',
-              icon: '/favicon.ico'
+              icon: '/pwa-192x192.png'
             },
             {
               action: 'snooze',
               title: 'Snooze',
-              icon: '/favicon.ico'
+              icon: '/pwa-192x192.png'
             }
           ],
           requireInteraction: true

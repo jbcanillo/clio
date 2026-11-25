@@ -85,8 +85,8 @@ self.addEventListener('push', (event) => {
   let title = 'Clio';
   const options = {
     body: 'Default notification body',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico'
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png'
   };
   if (event.data) {
     try {
@@ -117,7 +117,7 @@ self.addEventListener('notificationclick', (event) => {
         scheduleAlarm(updated);
         self.registration.showNotification('Snoozed', {
           body: `Reminder snoozed for ${minutes} minutes`,
-          icon: '/favicon.ico'
+          icon: '/pwa-192x192.png'
         });
       });
     });
@@ -144,8 +144,8 @@ function handleTestNotification() {
   }
   self.registration.showNotification('Test', {
     body: 'Test notification from service worker',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico'
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png'
   }).catch(err => console.error('Notification failed:', err));
 }
 
@@ -240,8 +240,8 @@ function triggerNow(alarm) {
   const body = alarm.description || 'Your reminder is due!';
   self.registration.showNotification(title, {
     body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png',
     tag: alarm.id,
     requireInteraction: true,
     actions: [
