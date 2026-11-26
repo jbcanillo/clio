@@ -41,13 +41,13 @@ describe('request size caps', () => {
     const res = await as('post', '/api/copilotkit').set('Content-Type', 'application/json').send(JSON.stringify({ pad: 'x'.repeat(120 * 1024) }));
     expect(res.status).toBe(413);
   });
-  it('rejects a 2 MB body on a normal route but accepts it on /api/import (up to 5 MB)', async () => {
+  it('rejects a 2 MB body on a normal route but accepts it on a bulk route like /api/attachments (up to 5 MB)', async () => {
     const { as } = await makeApi();
     const big = JSON.stringify({ reminders: [], journals: [], pad: 'x'.repeat(2 * 1024 * 1024) });
     expect((await as('post', '/api/reminders').set('Content-Type', 'application/json').send(big)).status).toBe(413);
-    expect((await as('post', '/api/import/numdum').set('Content-Type', 'application/json').send(big)).status).not.toBe(413);
+    expect((await as('post', '/api/attachments').set('Content-Type', 'application/json').send(big)).status).not.toBe(413);
     const huge = JSON.stringify({ pad: 'x'.repeat(6 * 1024 * 1024) });
-    expect((await as('post', '/api/import/numdum').set('Content-Type', 'application/json').send(huge)).status).toBe(413);
+    expect((await as('post', '/api/attachments').set('Content-Type', 'application/json').send(huge)).status).toBe(413);
   });
   it('answers malformed JSON with 400, not a stack trace', async () => {
     const { as } = await makeApi();

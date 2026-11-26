@@ -7,13 +7,13 @@ const filesBody = z.object({
 }).strict();
 const finishBody = z.object({
   keep: z.array(z.string().max(500)).max(200_000),
-  prune: z.boolean(),
+  archiveMissing: z.boolean(),
 }).strict();
 
 /**
  * Backup is a POST so the app's offline read cache never keeps a copy of the whole vault.
  * Restore runs in batches (files, then finish) so large photo libraries fit the body limit;
- * nothing is removed until every batch has been written.
+ * nothing is archived until every batch has been written, and nothing is ever deleted.
  */
 export function backupRouter({ backup, memory }) {
   const r = express.Router();
@@ -25,8 +25,8 @@ export function backupRouter({ backup, memory }) {
     res.json(await backup.writeFiles(parse(filesBody, req.body).files));
   }));
   r.post('/backup/restore/finish', wrap(async (req, res) => {
-    const { keep, prune } = parse(finishBody, req.body);
-    const out = prune ? await backup.prune(keep) : { removed: 0 };
+    const { keep, archiveMissing } = parse(finishBody, req.body);
+    const out = archiveMissing ? await backup.archiveMissing(keep) : { archived: 0 };
     await memory?.reindex();
     res.json(out);
   }));

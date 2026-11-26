@@ -60,7 +60,7 @@ describe('copilot endpoint', () => {
 describe('systemPrompt', () => {
   const out = systemPrompt({ timezone: 'Asia/Manila', today: '2026-11-23' });
   it('lists the card actions and prefers cards over text', () => {
-    for (const n of ['show_reminders', 'show_mood_chart', 'show_search_results', 'show_diary', 'show_reflection', 'show_note', 'propose_reschedule', 'propose_tasks', 'checkin', 'preview_note', 'delete_reminder']) {
+    for (const n of ['show_reminders', 'show_mood_chart', 'show_search_results', 'show_diary', 'show_reflection', 'show_note', 'propose_reschedule', 'propose_tasks', 'checkin', 'preview_note', 'archive_reminder']) {
       expect(out).toContain(n);
     }
     expect(out).toMatch(/prefer showing a card/i);

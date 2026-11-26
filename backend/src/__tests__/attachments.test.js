@@ -91,7 +91,7 @@ describe('check-in attachments', () => {
     expect(s).toMatchObject({
       hasEntry: true,
       photos: ['photo00001.jpg'],
-      people: ['Ana Cruz'],
+      people: [{ name: 'Ana Cruz', phone: '+63 900 000 0000' }], // the card shows phone and email too
       places: [{ label: 'Manila Bay', lat: 14.5995, lng: 120.9842 }, { label: 'Pinned location', lat: 1, lng: 2 }],
     });
   });

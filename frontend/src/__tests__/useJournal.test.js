@@ -4,14 +4,12 @@ import { useJournal } from '../hooks/useJournal';
 // Mock the db module with correct function signatures
 const mockAdd = jest.fn();
 const mockUpdate = jest.fn();
-const mockRemove = jest.fn();
 const mockGetAll = jest.fn();
 
 vi.mock('../utils/store', () => ({
   getAllJournalEntries: () => mockGetAll(),
   createJournalEntry: (...args) => mockAdd(...args),
-  updateJournalEntry: (...args) => mockUpdate(...args),
-  deleteJournalEntry: (...args) => mockRemove(...args)
+  updateJournalEntry: (...args) => mockUpdate(...args)
 }));
 
 describe('useJournal', () => {
@@ -60,15 +58,11 @@ describe('useJournal', () => {
     expect(mockGetAll).toHaveBeenCalledTimes(2);
   });
 
-  it('should remove entry', async () => {
+  it('offers no way to delete an entry (entries are archived instead)', async () => {
     const { result } = renderHook(() => useJournal());
-
-    await act(async () => {
-      await result.current.removeEntry('1');
-    });
-
-    expect(mockRemove).toHaveBeenCalledWith('1');
-    expect(mockGetAll).toHaveBeenCalledTimes(2);
+    await act(async () => {});
+    expect(result.current.removeEntry).toBeUndefined();
+    expect(typeof result.current.refresh).toBe('function');
   });
 
   it('should edit entry', async () => {

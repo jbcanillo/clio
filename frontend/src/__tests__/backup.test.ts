@@ -6,14 +6,14 @@ vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (.
 const store = vi.hoisted(() => ({
   createReminder: vi.fn(async (r: { title: string }) => ({ ...r, id: `new-${r.title}` })),
   updateReminder: vi.fn(async (r: unknown) => r),
-  deleteAllReminders: vi.fn(async () => {}),
+  archiveAllReminders: vi.fn(async () => {}),
   createJournalEntry: vi.fn(async (j: unknown) => j),
-  deleteAllJournalEntries: vi.fn(async () => {}),
+  archiveAllJournalEntries: vi.fn(async () => {}),
 }));
 vi.mock('../utils/store', () => ({
-  default: { createReminder: store.createReminder, updateReminder: store.updateReminder, deleteAllReminders: store.deleteAllReminders },
+  default: { createReminder: store.createReminder, updateReminder: store.updateReminder, archiveAllReminders: store.archiveAllReminders },
   createJournalEntry: store.createJournalEntry,
-  deleteAllJournalEntries: store.deleteAllJournalEntries,
+  archiveAllJournalEntries: store.archiveAllJournalEntries,
 }));
 
 import {
@@ -142,15 +142,15 @@ describe('restoreBackup', () => {
     const uploads = apiFetch.mock.calls.filter(([p]) => p === '/api/backup/restore/files');
     expect(uploads.flatMap(([, init]) => init.json.files)).toEqual(exportFixture().files);
     const finish = apiFetch.mock.calls[apiFetch.mock.calls.length - 1];
-    expect(finish).toEqual(['/api/backup/restore/finish', { method: 'POST', json: { keep: exportFixture().files.map((f) => f.path), prune: true } }]);
+    expect(finish).toEqual(['/api/backup/restore/finish', { method: 'POST', json: { keep: exportFixture().files.map((f) => f.path), archiveMissing: true } }]);
     expect(progress[progress.length - 1]).toBe(6);
     expect(changed).toHaveBeenCalled();
   });
 
-  it('merge mode does not prune', async () => {
+  it('merge mode archives nothing', async () => {
     apiFetch.mockResolvedValue({});
     await restoreBackup(describeBackup(exportFixture()), { replace: false });
-    expect(apiFetch.mock.calls[apiFetch.mock.calls.length - 1][1].json.prune).toBe(false);
+    expect(apiFetch.mock.calls[apiFetch.mock.calls.length - 1][1].json.archiveMissing).toBe(false);
   });
 
   it('stops at a failed batch without finishing (so nothing is removed)', async () => {
@@ -159,15 +159,15 @@ describe('restoreBackup', () => {
     expect(apiFetch.mock.calls.some(([p]) => p === '/api/backup/restore/finish')).toBe(false);
   });
 
-  it('restores an old backup: replaces reminders and journal, and keeps completed reminders completed', async () => {
+  it('restores an old backup: archives (never deletes) current reminders and journal, and keeps completed reminders completed', async () => {
     const opened = describeBackup({ version: 1, reminders: [{ title: 'A', completed: true }, { title: 'B', completed: false }], journal: [{ text: 'j' }] });
     await restoreBackup(opened, { replace: true });
-    expect(store.deleteAllReminders).toHaveBeenCalled();
-    expect(store.deleteAllJournalEntries).toHaveBeenCalled();
+    expect(store.archiveAllReminders).toHaveBeenCalled();
+    expect(store.archiveAllJournalEntries).toHaveBeenCalled();
     expect(store.createReminder).toHaveBeenCalledTimes(2);
     expect(store.updateReminder).toHaveBeenCalledWith({ title: 'A', completed: true, id: 'new-A' });
     expect(store.updateReminder).toHaveBeenCalledTimes(1);
-    expect(store.createJournalEntry).toHaveBeenCalledWith({ text: 'j' });
+    expect(store.createJournalEntry).toHaveBeenCalledWith({ text: 'j', id: undefined });
   });
 
   it('refuses to start offline', async () => {

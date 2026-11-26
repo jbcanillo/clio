@@ -127,6 +127,8 @@ export function createDailyService({ vault }) {
       const current = await get(date);
       if (current?.parseError) throw codedError('Daily note has unreadable frontmatter; fix it in Obsidian first', 'parse_error');
       const frontmatter = current ? { ...current.frontmatter } : { date, tags: [], private: true };
+      delete frontmatter.archived; // a new check-in on an archived day brings the day back
+      delete frontmatter.archivedAt;
       let body = current ? current.body : '';
       if (isMood) {
         frontmatter.mood = entry.mood;
@@ -168,7 +170,8 @@ export function createDailyService({ vault }) {
   async function moodSeries(from, to) {
     const out = [];
     for (const d of eachDay(from, to)) {
-      const f = await get(d);
+      const raw = await get(d);
+      const f = raw?.frontmatter?.archived === true ? null : raw; // archived days are left out of the mood chart
       const m = f?.frontmatter?.mood;
       const e = f?.frontmatter?.energy;
       out.push({ date: d, mood: typeof m === 'number' ? m : null, energy: typeof e === 'number' ? e : null });
@@ -191,36 +194,67 @@ export function createDailyService({ vault }) {
     return bullets;
   }
 
+  const isArchived = (f) => f?.frontmatter?.archived === true;
+  const emptySummary = (d) => ({ date: d, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 }, photos: [], people: [], places: [] });
+
+  /** What a day card shows. People keep their phone and email. */
+  function summarize(d, f) {
+    const b = sectionBullets(f.body);
+    const photos = b.photos.map((l) => PHOTO_LINE.exec(l)?.[1]).filter(Boolean);
+    const people = b.people.map(parsePerson).filter((p) => p.name);
+    const places = b.places.map((l) => {
+      const m = PLACE_LINE.exec(l);
+      return m ? { label: m[1], lat: Number(m[2]), lng: Number(m[3]) } : null;
+    }).filter(Boolean);
+    const m = f.frontmatter.mood;
+    const e = f.frontmatter.energy;
+    return {
+      date: d,
+      mood: typeof m === 'number' ? m : null,
+      energy: typeof e === 'number' ? e : null,
+      headline: (b.events[0] ?? b.thoughts[0] ?? b.ideas[0] ?? '').slice(0, 120),
+      hasEntry: true,
+      sections: { thoughts: b.thoughts.length, ideas: b.ideas.length, events: b.events.length },
+      photos,
+      people,
+      places,
+      ...(isArchived(f) ? { archived: true, ...(f.frontmatter.archivedAt ? { archivedAt: String(f.frontmatter.archivedAt) } : {}) } : {}),
+    };
+  }
+
+  /** One summary per day in [from, to]. An archived day counts as empty here (it is listed by archivedDays). */
   async function rangeSummaries(from, to) {
     const out = [];
     for (const d of eachDay(from, to)) {
       const f = await get(d);
-      if (!f || f.parseError || !noteHasEntry(f)) {
-        out.push({ date: d, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 }, photos: [], people: [], places: [] });
-        continue;
-      }
-      const b = sectionBullets(f.body);
-      const photos = b.photos.map((l) => PHOTO_LINE.exec(l)?.[1]).filter(Boolean);
-      const people = b.people.map((l) => l.split(' · ')[0]).filter(Boolean);
-      const places = b.places.map((l) => {
-        const m = PLACE_LINE.exec(l);
-        return m ? { label: m[1], lat: Number(m[2]), lng: Number(m[3]) } : null;
-      }).filter(Boolean);
-      const m = f.frontmatter.mood;
-      const e = f.frontmatter.energy;
-      out.push({
-        date: d,
-        mood: typeof m === 'number' ? m : null,
-        energy: typeof e === 'number' ? e : null,
-        headline: (b.events[0] ?? b.thoughts[0] ?? b.ideas[0] ?? '').slice(0, 120),
-        hasEntry: true,
-        sections: { thoughts: b.thoughts.length, ideas: b.ideas.length, events: b.events.length },
-        photos,
-        people,
-        places,
-      });
+      out.push(!f || f.parseError || !noteHasEntry(f) || isArchived(f) ? emptySummary(d) : summarize(d, f));
     }
     return out;
+  }
+
+  /** Every archived day, newest first. */
+  async function archivedDays() {
+    const out = [];
+    for (const p of await vault.list('Clio/Daily')) {
+      const d = /(\d{4}-\d{2}-\d{2})\.md$/.exec(p)?.[1];
+      if (!d || p !== dailyPath(d)) continue;
+      const f = await vault.read(p);
+      if (f && !f.parseError && isArchived(f)) out.push(summarize(d, f));
+    }
+    return out.sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  /** Days are never deleted: archiving hides one from the journal and can be undone. */
+  async function archive(date, archived = true) {
+    if (!isValidDateKey(date)) throw new ValidationError('date must be YYYY-MM-DD');
+    const current = await get(date);
+    if (!current) throw codedError('Day not found', 'not_found');
+    if (current.parseError) throw codedError('Daily note has unreadable frontmatter; fix it in Obsidian first', 'parse_error');
+    const frontmatter = { ...current.frontmatter };
+    if (archived) Object.assign(frontmatter, { archived: true, archivedAt: new Date().toISOString() });
+    else { delete frontmatter.archived; delete frontmatter.archivedAt; }
+    await vault.write(dailyPath(date), { frontmatter, body: current.body }, { expectedHash: current.hash });
+    return { date, archived };
   }
 
   /** A day's entries, structured, for the edit form. */
@@ -259,6 +293,8 @@ export function createDailyService({ vault }) {
     if (current?.parseError) throw codedError('Daily note has unreadable frontmatter; fix it in Obsidian first', 'parse_error');
     if ((current ? current.hash : null) !== (day.baseHash ?? null)) throw new ConflictError(current);
     const frontmatter = current ? { ...current.frontmatter } : { date, tags: [], private: true };
+    delete frontmatter.archived; // editing a day brings it back from the archive
+    delete frontmatter.archivedAt;
     if (day.mood === null || day.mood === undefined) delete frontmatter.mood;
     else frontmatter.mood = day.mood;
     let body = current ? current.body : '';
@@ -267,5 +303,5 @@ export function createDailyService({ vault }) {
     return { hash };
   }
 
-  return { append, get, hasEntry, moodSeries, rangeSummaries, entriesOf, replace };
+  return { append, get, hasEntry, moodSeries, rangeSummaries, archivedDays, archive, entriesOf, replace };
 }

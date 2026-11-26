@@ -8,10 +8,12 @@ import type { NoteSummary } from '../lib/types';
 
 const listNotes = vi.fn();
 const toggleChecklist = vi.fn();
+const archiveNote = vi.fn();
 vi.mock('../lib/clioApi', async (orig) => ({
   ...(await orig<object>()),
   listNotes: (...a: unknown[]) => listNotes(...a),
   toggleChecklist: (...a: unknown[]) => toggleChecklist(...a),
+  archiveNote: (...a: unknown[]) => archiveNote(...a),
 }));
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (...a: unknown[]) => apiFetch(...a) }));
@@ -246,5 +248,33 @@ describe('NotesPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Edit Offline idea' }));
     expect(await screen.findByLabelText('Note')).toHaveValue('draft text');
     expect(queuedNote).toHaveBeenCalledWith('pending:q1');
+  });
+});
+
+describe('NotesPage: archiving and the new-note form', () => {
+  it('archives a note from its card and shows archived notes with Unarchive', async () => {
+    archiveNote.mockReset().mockResolvedValue({ hash: 'x' });
+    const old = note({ path: 'Clio/Notes/old.md', title: 'Old list', archived: true });
+    listNotes.mockImplementation(async (opts?: { archived?: boolean }) => (opts?.archived ? [old] : [A, B, C]));
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Archive Groceries' }));
+    expect(archiveNote).toHaveBeenCalledWith('Clio/Notes/a.md', true);
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Archived' }));
+    const section = await screen.findByRole('region', { name: 'Archived notes' });
+    expect(await within(section).findByText('Old list')).toBeInTheDocument();
+    expect(within(section).queryByText('Groceries')).toBeNull();
+    await userEvent.click(within(section).getByRole('button', { name: 'Unarchive Old list' }));
+    expect(archiveNote).toHaveBeenCalledWith('Clio/Notes/old.md', false);
+  });
+
+  it('the new-note form has a Cancel button that closes it', async () => {
+    renderPage();
+    await screen.findByText('Groceries');
+    await userEvent.click(screen.getByRole('button', { name: /new note|add note/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'New note' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog', { name: 'New note' })).toBeNull();
   });
 });

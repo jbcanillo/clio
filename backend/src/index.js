@@ -13,7 +13,6 @@ import { createVaultService } from './services/vaultService.js';
 import { createDailyService } from './services/dailyService.js';
 import { createReminderService } from './services/reminderService.js';
 import { createJournalService } from './services/journalService.js';
-import { createImportService } from './services/importService.js';
 import { createMemoryService } from './services/memory/index.js';
 import { createShareSession } from './services/shareSession.js';
 import { createPushService } from './services/pushService.js';
@@ -38,7 +37,6 @@ const vault = createVaultService({ vaultDir: config.vaultDir });
 const daily = createDailyService({ vault });
 const reminders = createReminderService({ vault });
 const journal = createJournalService({ vault });
-const importer = createImportService({ reminders, journal });
 const memory = createMemoryService(config, { vault });
 
 const shareSession = createShareSession();
@@ -54,5 +52,5 @@ const attachments = createAttachmentService({ vault });
 const backup = createBackupService({ vault });
 const opsSync = createOpsSyncService({ reminders, daily, attachments, dataDir: config.dataDir, memory });
 
-const app = createApp({ backup, notes, importer, journal, sync, opsSync, attachments, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
+const app = createApp({ backup, notes, journal, sync, opsSync, attachments, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
 app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));

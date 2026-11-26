@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../lib/api';
 import type { NoteSummary } from '../../lib/types';
 import { Chip } from '../ui/Chip';
+import { ArchiveButton } from '../ui/ArchiveButton';
 import { CircleCheck } from '../ui/CircleCheck';
 import { PhotoStrip } from '../media/PhotoThumb';
 
@@ -13,11 +14,13 @@ interface Props {
   onConflict?: () => void;
   /** Makes the note open for editing. */
   onEdit?: () => void;
+  /** Archives the note (or restores an archived one). Notes are never deleted. */
+  onArchive?: () => Promise<unknown> | void;
 }
 
 type Msg = null | 'conflict' | 'error';
 
-export function ChecklistNote({ note, onToggle, onOpen, onConflict, onEdit }: Props) {
+export function ChecklistNote({ note, onToggle, onOpen, onConflict, onEdit, onArchive }: Props) {
   // Props are the source of truth; overrides are optimistic and dropped when the note prop changes.
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
   const [pending, setPending] = useState<Record<number, boolean>>({});
@@ -70,18 +73,21 @@ export function ChecklistNote({ note, onToggle, onOpen, onConflict, onEdit }: Pr
   };
 
   return (
-    <div className="rounded-2xl border border-hairline bg-card p-4 space-y-2">
+    <div data-archived={note.archived ? 'true' : undefined} className="rounded-2xl border border-hairline border-l-[3px] border-l-success bg-card p-4 shadow-card space-y-2">
       <div className="flex items-start justify-between gap-2">
         {onEdit ? (
           <button type="button" onClick={onEdit} className="text-left font-semibold text-ink hover:underline">{note.title}</button>
         ) : (
           <div className="font-semibold text-ink">{note.title}</div>
         )}
-        {onEdit ? (
-          <button type="button" onClick={onEdit} aria-label={`Edit ${note.title}`} className="-mr-1 -mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-inset">
-            <Pencil aria-hidden="true" size={14} />
-          </button>
-        ) : null}
+        <span className="-mr-1 -mt-1 flex shrink-0 items-center">
+          {onArchive ? <ArchiveButton label={note.title} archived={note.archived} onClick={onArchive} /> : null}
+          {onEdit ? (
+            <button type="button" onClick={onEdit} aria-label={`Edit ${note.title}`} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-inset">
+              <Pencil aria-hidden="true" size={14} />
+            </button>
+          ) : null}
+        </span>
       </div>
       {note.tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">

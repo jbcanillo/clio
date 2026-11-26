@@ -38,7 +38,7 @@ the profile note are not private.
 ## Prompt injection
 
 Text from your notes reaches the model only inside `<note_content>` tags with `<` and `>` escaped, and the system prompt
-says it is data, not instructions. Clio has no tool that deletes or overwrites a note; deletion goes through a confirmation
+says it is data, not instructions. Nothing in Clio can be deleted, by you or the AI: items are archived (hidden, kept, restorable), and archiving from the chat goes through a confirmation
 card in the browser. This reduces, but cannot eliminate, the risk of a malicious note steering the model.
 
 ## Logs

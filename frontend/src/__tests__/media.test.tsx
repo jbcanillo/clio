@@ -129,7 +129,7 @@ describe('offline overlays for edits', () => {
 
   it('a queued day edit shows in the week and in the day', () => {
     const d: DaySummary = { date: '2026-11-20', mood: 5, energy: null, headline: 'Old', hasEntry: true, sections: { thoughts: 3, ideas: 0, events: 1 } };
-    expect(overlayDays([d], [edit])[0]).toMatchObject({ mood: 2, headline: 'Edited', sections: { thoughts: 0, events: 1 }, people: ['Bo'], photos: ['abcdefgh12.jpg'] });
+    expect(overlayDays([d], [edit])[0]).toMatchObject({ mood: 2, headline: 'Edited', sections: { thoughts: 0, events: 1 }, people: [{ name: 'Bo' }], photos: ['abcdefgh12.jpg'] });
     const detail = overlayDayDetail({ date: '2026-11-20', exists: true, hash: 'h', frontmatter: { mood: 5 }, entries: { events: ['Old'], thoughts: [], ideas: [], photos: [], people: [], places: [] } }, [
       edit,
       { id: 'a', createdAt: T + 1, kind: 'daily.append', date: '2026-11-20', entry: { section: 'ideas', text: 'Later idea' } },

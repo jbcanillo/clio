@@ -2,7 +2,8 @@ import { ValidationError } from '../errors.js';
 
 /** Everything Clio stores lives under this vault folder. */
 export const BACKUP_ROOT = 'Clio';
-const ATTACHMENTS = `${BACKUP_ROOT}/Attachments/`;
+/** Records a restore may archive: one markdown file per reminder, note, diary day or journal entry. */
+const ARCHIVABLE = /^Clio\/(Reminders|Notes|Daily|Events)\/[^/]+\.md$/;
 export const BACKUP_FORMAT = 'clio-backup';
 export const BACKUP_VERSION = 2;
 
@@ -57,20 +58,22 @@ export function createBackupService({ vault, now = () => new Date() }) {
   }
 
   /**
-   * After every batch is written: removes Clio files the backup did not have, so the
-   * vault matches the backup. Photos are never removed (they are harmless and may be
-   * linked from notes edited elsewhere).
+   * After every batch is written: archives the reminders, notes, diary days and journal
+   * entries the backup did not have, so the active lists match the backup. Nothing is ever
+   * deleted; archived items can be brought back from each screen's Archived view.
    */
-  async function prune(keepPaths) {
+  async function archiveMissing(keepPaths) {
     const keep = new Set(keepPaths.map(checkBackupPath));
-    let removed = 0;
+    let archived = 0;
     for (const path of await vault.listFiles(BACKUP_ROOT)) {
-      if (keep.has(path) || path.startsWith(ATTACHMENTS)) continue;
-      await vault.deleteFile(path);
-      removed += 1;
+      if (keep.has(path) || !ARCHIVABLE.test(path)) continue;
+      const f = await vault.read(path);
+      if (!f || f.parseError || f.frontmatter.archived === true) continue;
+      await vault.write(path, { frontmatter: { ...f.frontmatter, archived: true, archivedAt: now().toISOString() }, body: f.body }, { expectedHash: f.hash });
+      archived += 1;
     }
-    return { removed };
+    return { archived };
   }
 
-  return { exportAll, writeFiles, prune };
+  return { exportAll, writeFiles, archiveMissing };
 }

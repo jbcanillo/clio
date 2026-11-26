@@ -116,7 +116,7 @@ Clio holds your diary/journal, so it is private by default. Full details: [docs/
 - **Single owner, password sign-in.** Every `/api` route except sign-in needs a session token. Sessions last `SESSION_TTL_HOURS` and are lost when the API restarts.
 - **Brute-force protection.** 5 sign-in attempts per minute per IP, and a 15-minute lockout after 5 failed passwords.
 - **Private diary.** Daily notes and journal entries are written with `private: true`. Clio only retrieves past private entries when you turn on **Share private diary with Clio this session** on the Chat tab, and it is off again at every new sign-in. What you type in the current conversation is always sent to the AI provider.
-- **No silent destruction.** Clio has no tool that deletes or overwrites a note. Deleting a reminder always shows a confirmation card first.
+- **Nothing is ever deleted.** Reminders, notes, diary days and journal entries are **archived** instead: hidden from the normal lists (and from notifications), kept in the vault and in backups, and restorable from each screen's *Archived* view. Clio's AI cannot overwrite a note, and archiving a reminder from the chat always shows a confirmation card first.
 - **Prompt-injection guard.** Text from your notes reaches the model only inside `<note_content>` tags with `<` and `>` escaped, and the system prompt says it is data, not instructions.
 - **Encrypted secrets.** The OpenRouter key saved in Settings is encrypted with AES-256-GCM using a key derived from `SECRET_KEY`, and it is never sent back to the browser.
 - **Encrypted offline data.** Notes and changes made offline are stored in the browser encrypted with a key derived from your password, kept only in memory.
@@ -223,7 +223,7 @@ npm run dev                                        # http://localhost:5173, prox
 ### Tests
 
 ```bash
-cd backend  && npx vitest run                      # API, vault, scheduler, sync, import
+cd backend  && npx vitest run                      # API, vault, scheduler, sync, backup
 cd frontend && npx vitest run                      # UI, outbox, store
 bash scripts/test-backup.sh                        # backup/restore round trip
 bash scripts/check-env-docs.sh                     # README and .env.example list the same variables
@@ -284,10 +284,10 @@ Edits made in Obsidian and in Clio at the same time can collide. Clio detects ch
 
 ## Offline Mode
 
-- **What works offline:** writing notes, creating and changing reminders (create, edit, complete, snooze, delete), check-ins and diary entries, including photos. The last data you loaded stays readable.
+- **What works offline:** writing notes, creating and changing reminders (create, edit, complete, snooze, archive), check-ins and diary entries, including photos. The last data you loaded stays readable.
 - **How it is stored:** pending changes and the read cache live in IndexedDB, encrypted with AES-GCM-256. The key is derived from your password (PBKDF2-SHA256) and kept only in memory, so after a reload you sign in again to unlock them.
 - **How it syncs:** when the connection returns, changes are sent in the order you made them (`POST /api/sync/notes` and `/api/sync/ops`). Each change has an id, so resending a batch is safe. The header shows **offline**, **syncing** or **online**.
-- **Conflicts:** if a note changed on the server meanwhile, both versions are kept and shown so you can choose. A reminder change that can no longer apply (for example, the reminder was deleted elsewhere) is dropped with a message.
+- **Conflicts:** if a note changed on the server meanwhile, both versions are kept and shown so you can choose. A reminder change that can no longer apply (for example, the reminder was changed elsewhere) is dropped with a message.
 - **What needs a connection:** the chat with Clio and search.
 
 ---
@@ -314,7 +314,6 @@ The Settings page lets you:
 - Set the **timezone** and the morning and evening **check-in times**.
 - **Enable notifications** on this device.
 - Switch between **light and dark** themes.
-- Run a **one-time import** of the old numdum data stored in this browser.
 
 ---
 
@@ -380,13 +379,18 @@ curl -X POST http://localhost:4356/api/auth/login \
 | `/api/daily`, `/api/daily/:date` | `GET` | List daily notes, read one day (`YYYY-MM-DD`) |
 | `/api/daily/:date` | `PUT` | Replace a day's editable content |
 | `/api/daily/:date/entries` | `POST` | Append an entry (text, mood, photo, people, place) |
-| `/api/reminders` | `GET` `POST` | List or create reminders |
-| `/api/reminders/:id` | `PUT` `DELETE` | Update or delete a reminder |
+| `/api/reminders` | `GET` `POST` | List or create reminders (`?archived=true` lists archived ones) |
+| `/api/reminders/:id` | `PUT` | Update a reminder |
+| `/api/reminders/:id/archive`, `/api/reminders/:id/unarchive` | `POST` | Archive or restore a reminder (there is no delete) |
 | `/api/reminders/:id/complete`, `/api/reminders/:id/snooze` | `POST` | Complete or snooze a reminder |
-| `/api/journal` | `GET` `POST` | List or create journal entries |
-| `/api/journal/:id` | `PUT` `DELETE` | Update or delete a journal entry |
+| `/api/journal` | `GET` `POST` | List or create journal entries (`?archived=true` lists archived ones) |
+| `/api/journal/:id` | `PUT` | Update a journal entry |
+| `/api/journal/:id/archive`, `/api/journal/:id/unarchive` | `POST` | Archive or restore a journal entry |
+| `/api/daily/archived` | `GET` | List archived diary days |
+| `/api/daily/:date/archive`, `/api/daily/:date/unarchive` | `POST` | Archive or restore a diary day |
 | `/api/notes`, `/api/notes/read` | `GET` | List notes, read one note |
 | `/api/notes/checklist` | `PATCH` | Tick or untick a checklist item |
+| `/api/notes/archive` | `POST` | Archive or restore a note (`{ path, archived }`); `GET /api/notes?archived=true` lists archived notes |
 | `/api/search?q=…` | `GET` | Search the vault |
 | `/api/analytics/mood` | `GET` | Mood over time |
 | `/api/attachments` | `POST` | Upload a photo (base64 JSON, up to 4 MB) |
@@ -399,7 +403,8 @@ curl -X POST http://localhost:4356/api/auth/login \
 | `/api/push/vapid-public-key` | `GET` | Public VAPID key |
 | `/api/push/subscribe`, `/api/push/unsubscribe` | `POST` | Register or remove this device for notifications |
 | `/api/checkin/snooze` | `POST` | Snooze today's check-in nudge |
-| `/api/import/numdum` | `POST` | One-time import of old numdum data |
+| `/api/backup/export` | `POST` | Everything under `Clio/` as one JSON export (the app encrypts it) |
+| `/api/backup/restore/files`, `/api/backup/restore/finish` | `POST` | Restore in batches, then optionally remove what the backup did not have |
 | `/api/copilotkit` | `POST` | CopilotKit chat endpoint (streaming) |
 
 Example:
@@ -465,7 +470,7 @@ The API refuses to start if `CLIO_PASSWORD` is missing, `SECRET_KEY` is shorter 
 | **API rate** | 300 per minute per IP | All `/api` routes |
 | **Body size** | 1 MB | Most `/api` routes |
 | **Chat body size** | 100 KB | `/api/copilotkit` |
-| **Bulk body size** | 5 MB | `/api/import`, `/api/attachments`, `/api/sync/ops` |
+| **Bulk body size** | 5 MB | `/api/attachments`, `/api/sync/ops` (`/api/backup`: 30 MB, signed-in only) |
 | **Photo size** | 4 MB | Each attachment |
 | **Proxy timeout** | 300 seconds | nginx, for streaming chat responses |
 
@@ -485,7 +490,7 @@ BACKUP_PASSPHRASE='long passphrase' scripts/backup.sh ~/clio-backups
 
 Writes one encrypted file with the `vault` and `data` volumes. Restore and details: [scripts/BACKUP_README.md](scripts/BACKUP_README.md).
 
-**From the app:** *Menu → Backup & restore* (also a panel in Settings) downloads one file with everything under `Clio/` in the vault: reminders, notes, diary days, journal entries, photos and Clio's profile memory. It is encrypted in the browser (AES-256-GCM, PBKDF2-SHA256 with 600,000 rounds) with a password you choose; the server never sees it. Restoring shows what the file holds first, then either **replaces** (Clio's files match the backup; photos are never deleted) or **merges**. Settings and the API key are not included. Older app backups (reminders and journal only) can still be restored. Your notes are also plain markdown, so a Git remote or Syncthing copy of the vault is a second backup.
+**From the app:** *Menu → Backup & restore* downloads one file with everything under `Clio/` in the vault: reminders, notes, diary days, journal entries, photos and Clio's profile memory. It is encrypted in the browser (AES-256-GCM, PBKDF2-SHA256 with 600,000 rounds) with a password you choose; the server never sees it. Restoring shows what the file holds first, then either **replaces** (items not in the backup are archived, never deleted) or **merges**. Settings and the API key are not included. Older app backups (reminders and journal only) can still be restored. Your notes are also plain markdown, so a Git remote or Syncthing copy of the vault is a second backup.
 
 ---
 
@@ -630,7 +635,7 @@ Findings: [docs/superpowers/spikes/basic-memory.md](docs/superpowers/spikes/basi
 
 ## Known Gaps
 
-- The old camera, contacts and map tabs are gone. **Photo attachments from numdum are not migrated** (large values are left out on import).
+- The old camera, contacts and map tabs are gone, and data from the old numdum app can no longer be imported.
 - Reminders reach you by web push from the server; the old in-browser alarm timers still exist and may show a second notification.
 - The chat and search need a connection.
 - Semantic recall (Basic Memory) and real-OpenRouter tool calling are not covered by the automated tests.

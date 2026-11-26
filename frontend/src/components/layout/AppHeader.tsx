@@ -21,7 +21,7 @@ export default function AppHeader({ status, children, onEnableNotifications, onI
   const navigate = useNavigate();
   return (
     <header className="glass relative z-30 shrink-0 border-b border-hairline">
-      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 md:max-w-none md:px-6">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="" width={32} height={32} className="brand-medallion h-8 w-8" />

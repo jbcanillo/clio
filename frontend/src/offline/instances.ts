@@ -76,9 +76,11 @@ async function overlay(path: string, data: unknown): Promise<unknown> {
       const ops = await opsOutbox.list();
       if (!ops.length) return data;
       const merged = overlayReminders(data, ops);
-      // Respect a ?done= filter on the merged list.
-      const done = new URLSearchParams(path.split('?')[1] ?? '').get('done');
-      return done === null ? merged : merged.filter((r) => Boolean(r.done) === (done === 'true'));
+      // Respect the ?done= and ?archived= filters on the merged list.
+      const params = new URLSearchParams(path.split('?')[1] ?? '');
+      const done = params.get('done');
+      const archivedView = params.get('archived') === 'true';
+      return merged.filter((r) => (done === null || Boolean(r.done) === (done === 'true')) && Boolean(r.archived) === archivedView);
     }
     if (base === '/api/daily' && Array.isArray(data)) {
       const ops = await opsOutbox.list();

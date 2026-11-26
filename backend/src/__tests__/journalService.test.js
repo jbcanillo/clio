@@ -20,12 +20,16 @@ describe('journalService', () => {
     const u = await svc.update('a1', { text: 'Edited', mood: '😐' });
     expect(u).toMatchObject({ id: 'a1', text: 'Edited', mood: '😐', createdAt: '2026-11-20T08:00:00.000Z' });
   });
-  it('removes an entry; unknown ids are not_found', async () => {
+  it('archives an entry instead of deleting it, and can unarchive it; unknown ids are not_found', async () => {
     await svc.create({ id: 'a1', text: 'First' });
-    await svc.remove('a1');
+    expect(await svc.archive('a1')).toMatchObject({ id: 'a1', archived: true });
     expect(await svc.list()).toEqual([]);
-    await expect(svc.update('a1', { text: 'x' })).rejects.toMatchObject({ code: 'not_found' });
-    await expect(svc.remove('../x')).rejects.toMatchObject({ code: 'not_found' });
+    expect((await svc.list({ archived: true })).map((e) => e.id)).toEqual(['a1']);
+    await expect(svc.create({ id: 'a1', text: 'again' })).rejects.toMatchObject({ code: 'conflict' }); // ids stay unique
+    await svc.archive('a1', false);
+    expect((await svc.list()).map((e) => e.id)).toEqual(['a1']);
+    await expect(svc.archive('../x')).rejects.toMatchObject({ code: 'not_found' });
+    expect(svc).not.toHaveProperty('remove');
   });
   it('rejects empty text and invalid ids', async () => {
     await expect(svc.create({ text: '  ' })).rejects.toThrow(/text/);
@@ -52,7 +56,11 @@ describe('journal HTTP', () => {
     const id = created.body.id;
     expect((await as('get', '/api/journal')).body.map((e) => e.id)).toEqual([id]);
     expect((await as('put', `/api/journal/${id}`).send({ text: 'Edited' })).body.text).toBe('Edited');
-    expect((await as('delete', `/api/journal/${id}`)).status).toBe(204);
+    expect((await as('delete', `/api/journal/${id}`)).status).toBe(404); // no deleting
+    expect((await as('post', `/api/journal/${id}/archive`)).body).toMatchObject({ id, archived: true });
+    expect((await as('get', '/api/journal')).body).toEqual([]);
+    expect((await as('get', '/api/journal?archived=true')).body.map((e) => e.id)).toEqual([id]);
+    expect((await as('post', `/api/journal/${id}/unarchive`)).body.archived).toBeUndefined();
     expect((await as('put', '/api/journal/nope').send({ text: 'x' })).status).toBe(404);
     expect((await as('post', '/api/journal').send({ text: '' })).status).toBe(400);
   });

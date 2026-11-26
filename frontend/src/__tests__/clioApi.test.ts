@@ -8,7 +8,7 @@ vi.mock('../lib/api', async (orig) => {
 });
 
 import { apiFetch } from '../lib/api';
-import { completeReminder, deleteReminder, snoozeReminder, toggleChecklist, listReminders } from '../lib/clioApi';
+import { archiveReminder, completeReminder, snoozeReminder, toggleChecklist, listReminders } from '../lib/clioApi';
 import { emitDataChanged, useDataVersion } from '../lib/dataEvents';
 
 const mocked = vi.mocked(apiFetch);
@@ -26,11 +26,22 @@ describe('clioApi', () => {
     expect(events).toBe(1);
   });
 
-  it('deleteReminder encodes the id in the DELETE URL and emits once', async () => {
-    mocked.mockResolvedValue(undefined);
-    await deleteReminder('a/b?c');
-    expect(mocked).toHaveBeenCalledWith('/api/reminders/a%2Fb%3Fc', { method: 'DELETE' });
-    expect(events).toBe(1);
+  it('archiveReminder POSTs to archive (or unarchive) with the id encoded, and emits once each', async () => {
+    mocked.mockResolvedValue({ id: 'a/b?c' });
+    await archiveReminder('a/b?c');
+    expect(mocked).toHaveBeenCalledWith('/api/reminders/a%2Fb%3Fc/archive', { method: 'POST' });
+    await archiveReminder('a/b?c', false);
+    expect(mocked).toHaveBeenCalledWith('/api/reminders/a%2Fb%3Fc/unarchive', { method: 'POST' });
+    expect(events).toBe(2);
+    expect(mocked.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
+  });
+
+  it('lists archived reminders and notes with ?archived=true', async () => {
+    mocked.mockResolvedValue([]);
+    await listReminders({ archived: true });
+    expect(mocked).toHaveBeenCalledWith('/api/reminders?archived=true');
+    await listReminders({ done: false });
+    expect(mocked).toHaveBeenCalledWith('/api/reminders?done=false');
   });
 
   it('snoozeReminder POSTs until', async () => {

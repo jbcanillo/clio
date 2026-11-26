@@ -13,7 +13,6 @@ import { opsSyncRouter } from './controllers/opsSyncController.js';
 import { attachmentRouter } from './controllers/attachmentController.js';
 import { journalRouter } from './controllers/journalController.js';
 import { notesRouter } from './controllers/notesController.js';
-import { importRouter } from './controllers/importController.js';
 import { backupRouter } from './controllers/backupController.js';
 import { errorHandler } from './http.js';
 import { buildCopilotEndpoint } from './copilot/runtime.js';
@@ -33,7 +32,6 @@ export function registerRoutes(app, deps) {
   if (deps.reminders) api.use(reminderRouter(deps));
   if (deps.journal) api.use(journalRouter(deps));
   if (deps.notes) api.use(notesRouter(deps));
-  if (deps.importer) api.use(importRouter(deps));
   if (deps.backup) api.use(backupRouter(deps));
   if (deps.memory) api.use(searchRouter(deps));
   if (deps.daily) api.use(analyticsRouter(deps));

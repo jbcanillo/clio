@@ -48,9 +48,10 @@ export function createOpsSyncService({ reminders, daily, attachments, dataDir, m
         return { status: 'applied', result: await reminders.complete(op.reminderId) };
       case 'reminder.snooze':
         return { status: 'applied', result: await reminders.snooze(op.reminderId, op.until) };
-      case 'reminder.delete':
-        await reminders.remove(op.reminderId);
-        return { status: 'applied' };
+      case 'reminder.archive':
+        return { status: 'applied', result: await reminders.archive(op.reminderId, op.archived) };
+      case 'reminder.delete': // older clients: nothing is ever deleted, so this archives
+        return { status: 'applied', result: await reminders.archive(op.reminderId, true) };
       case 'attachment.put':
         if (!attachments) throw new ValidationError('attachments are not enabled');
         await attachments.put({ file: op.file, mime: op.mime, data: op.data });

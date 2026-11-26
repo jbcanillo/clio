@@ -1,6 +1,6 @@
 // Reminders and journal entries live in the vault, behind the Clio API.
 // This module keeps the function names and object shapes of the old IndexedDB
-// layer (utils/db.js) so the existing hooks and components work unchanged.
+// layer so the existing hooks and components work unchanged.
 import { apiFetch } from '../lib/api';
 import { emitDataChanged } from '../lib/dataEvents';
 import { newReminderId, writeOrQueue } from '../offline/instances';
@@ -70,15 +70,6 @@ const updateReminder = async (data) => {
   );
 };
 
-const deleteReminder = async (id) => {
-  await writeOrQueue(
-    { kind: 'reminder.delete', reminderId: id },
-    async () => { await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' }); reminderChanged(); },
-    () => undefined,
-    'reminders',
-  );
-};
-
 const toggleComplete = async (id) => {
   const current = await findReminder(id);
   if (!current) throw new Error('Reminder not found');
@@ -99,8 +90,10 @@ const toggleComplete = async (id) => {
   );
 };
 
-const deleteAllReminders = async () => {
-  for (const r of await apiFetch('/api/reminders')) await deleteReminder(r.id);
+// Nothing is deleted. Restoring an older backup in "replace" mode archives what is there first.
+const archiveAllReminders = async () => {
+  for (const r of await apiFetch('/api/reminders')) await apiFetch(`/api/reminders/${encodeURIComponent(r.id)}/archive`, { method: 'POST' });
+  reminderChanged();
 };
 
 const journalFromApi = (e) => ({ ...(e.extras || {}), id: e.id, text: e.text, mood: e.mood, createdAt: e.createdAt });
@@ -125,11 +118,10 @@ export const updateJournalEntry = async (id, changes) => {
   return dailyChanged(journalFromApi(await apiFetch(`/api/journal/${id}`, { method: 'PUT', json })));
 };
 
-export const deleteJournalEntry = async (id) => { await apiFetch(`/api/journal/${id}`, { method: 'DELETE' }); dailyChanged(); };
-
-export const deleteAllJournalEntries = async () => {
-  for (const e of await apiFetch('/api/journal')) await deleteJournalEntry(e.id);
+export const archiveAllJournalEntries = async () => {
+  for (const e of await apiFetch('/api/journal')) await apiFetch(`/api/journal/${encodeURIComponent(e.id)}/archive`, { method: 'POST' });
+  dailyChanged();
 };
 
-const remindersStore = { getAllReminders, createReminder, updateReminder, deleteReminder, toggleComplete, deleteAllReminders };
+const remindersStore = { getAllReminders, createReminder, updateReminder, toggleComplete, archiveAllReminders };
 export default remindersStore;

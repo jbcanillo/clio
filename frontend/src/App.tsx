@@ -4,7 +4,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import NotificationManager from './components/features/NotificationManager';
 import AppHeader, { type HeaderStatus } from './components/layout/AppHeader';
 import CosmicBackdrop from './components/layout/CosmicBackdrop';
-import BottomNavigation from './components/layout/BottomNavigation';
+import BottomNavigation, { NAV_OFFSET } from './components/layout/BottomNavigation';
 import InstallModal from './components/ui/InstallModal';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { ScopedCopilot } from './copilot/ScopedCopilot';
@@ -32,10 +32,17 @@ const PAGES: Record<Scope, ReactNode> = {
   reminders: <RemindersPage />,
   notes: <NotesPage />,
 };
+/** Readable widths on wide screens: conversation and journal stay narrow; notes get room for a grid. */
+const SCOPE_WIDTH: Record<Scope, string> = {
+  chat: 'max-w-3xl',
+  diary: 'max-w-3xl',
+  reminders: 'max-w-4xl',
+  notes: 'max-w-6xl',
+};
 
 function BackBar({ onBack, children }: { onBack: () => void; children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-4">
+    <div className="mx-auto max-w-5xl px-4 py-4 md:px-6">
       <button type="button" onClick={onBack} className="btn btn-ghost btn-sm mb-3 gap-2" aria-label="Go back">
         <ArrowLeft size={18} /> Back
       </button>
@@ -169,9 +176,9 @@ function AppContent() {
       />
       {showInstallModal && <InstallModal onInstall={install} onDismiss={() => setShowInstallModal(false)} />}
 
-      <main className={`relative z-10 min-h-0 flex-1 ${activeScope === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} ${activeScope ? 'pb-20' : ''}`}>
+      <main className={`relative z-10 min-h-0 flex-1 ${activeScope === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} ${activeScope ? `pb-20 md:pb-0 ${NAV_OFFSET}` : ''}`}>
         {SCOPES.map((scope) => (
-          <div key={scope} hidden={activeScope !== scope} className={scope === 'chat' ? 'h-full min-h-0' : undefined}>
+          <div key={scope} hidden={activeScope !== scope} className={`mx-auto w-full ${SCOPE_WIDTH[scope]} ${scope === 'chat' ? 'h-full min-h-0' : ''}`}>
             <ScopedCopilot scope={scope}>{PAGES[scope]}</ScopedCopilot>
           </div>
         ))}
@@ -182,7 +189,7 @@ function AppContent() {
           ))}
           <Route
             path="/settings"
-            element={<BackBar onBack={goBack('/chat')}><SettingsPage onToast={toast.addToast} /></BackBar>}
+            element={<BackBar onBack={goBack('/chat')}><SettingsPage /></BackBar>}
           />
           <Route
             path="/backup"

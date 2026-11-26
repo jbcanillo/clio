@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllJournalEntries, createJournalEntry, updateJournalEntry, deleteJournalEntry } from '../utils/store';
+import { getAllJournalEntries, createJournalEntry, updateJournalEntry } from '../utils/store';
 
 export const useJournal = () => {
   const [entries, setEntries] = useState([]);
@@ -29,11 +29,6 @@ export const useJournal = () => {
     await refresh();
   };
 
-  const removeEntry = async (id) => {
-    await deleteJournalEntry(id);
-    await refresh();
-  };
-
   const editEntry = async (id, changes) => {
     await updateJournalEntry(id, changes);
     await refresh();
@@ -44,7 +39,6 @@ export const useJournal = () => {
     loading,
     error,
     addEntry,
-    removeEntry,
     editEntry,
     refresh
   };

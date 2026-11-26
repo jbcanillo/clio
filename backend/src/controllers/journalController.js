@@ -15,7 +15,7 @@ const update = z.object({ text: z.string().max(50_000).optional(), mood: mood.op
 
 export function journalRouter({ journal, memory }) {
   const r = express.Router();
-  r.get('/journal', wrap(async (_req, res) => res.json(await journal.list())));
+  r.get('/journal', wrap(async (req, res) => res.json(await journal.list({ archived: req.query.archived === 'true' }))));
   r.post('/journal', wrap(async (req, res) => {
     const entry = await journal.create(parse(create, req.body));
     await memory?.reindex();
@@ -26,10 +26,8 @@ export function journalRouter({ journal, memory }) {
     await memory?.reindex();
     res.json(entry);
   }));
-  r.delete('/journal/:id', wrap(async (req, res) => {
-    await journal.remove(req.params.id);
-    await memory?.reindex();
-    res.status(204).end();
-  }));
+  // There is no DELETE: entries are archived (and can be restored), never removed.
+  r.post('/journal/:id/archive', wrap(async (req, res) => res.json(await journal.archive(req.params.id, true))));
+  r.post('/journal/:id/unarchive', wrap(async (req, res) => res.json(await journal.archive(req.params.id, false))));
   return r;
 }

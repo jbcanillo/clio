@@ -9,6 +9,8 @@ export type OpBody =
   | { kind: 'reminder.update'; reminderId: string; patch: Record<string, unknown> }
   | { kind: 'reminder.complete'; reminderId: string }
   | { kind: 'reminder.snooze'; reminderId: string; until: string }
+  | { kind: 'reminder.archive'; reminderId: string; archived: boolean }
+  /** Only ever read back from an older app's queue; the server archives it. Nothing creates it now. */
   | { kind: 'reminder.delete'; reminderId: string }
   | { kind: 'daily.append'; date: string; entry: DailyEntry }
   | { kind: 'attachment.put'; file: string; mime: string; data: string }

@@ -189,10 +189,5 @@ export function createVaultService({ vaultDir }) {
     }
   }
 
-  /** Deletes a file; a missing file is not an error. */
-  async function deleteFile(relPath) {
-    await fs.promises.rm(resolve(relPath), { force: true });
-  }
-
-  return { read, write, list, remove, uniquePath, readFile, writeFileOnce, listFiles, writeRaw, deleteFile };
+  return { read, write, list, remove, uniquePath, readFile, writeFileOnce, listFiles, writeRaw };
 }

@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Archive, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ClioChat } from '../components/chat/ClioChat';
@@ -9,7 +9,7 @@ import { Chip } from '../components/ui/Chip';
 import { Sheet } from '../components/ui/Sheet';
 import { ClioActions } from '../copilot/actions';
 import { apiFetch } from '../lib/api';
-import { listNotes, toggleChecklist } from '../lib/clioApi';
+import { archiveNote, listNotes, toggleChecklist } from '../lib/clioApi';
 import { useDataVersion } from '../lib/dataEvents';
 import type { NoteSummary } from '../lib/types';
 import { editNote, queuedNote, saveNote } from '../offline';
@@ -70,6 +70,18 @@ export default function NotesPage() {
       .catch(() => { if (live) setError(true); });
     return () => { live = false; };
   }, [version, retry]);
+
+  // Archived notes load only when that view is open.
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedNotes, setArchivedNotes] = useState<NoteSummary[] | null>(null);
+  useEffect(() => {
+    if (!showArchived) return;
+    let live = true;
+    listNotes({ archived: true })
+      .then((n) => { if (live) setArchivedNotes(n); })
+      .catch(() => { if (live) setArchivedNotes([]); });
+    return () => { live = false; };
+  }, [showArchived, version, retry]);
 
   // The shell keeps this page mounted, so react to the URL changing, then clear the param.
   useEffect(() => {
@@ -138,7 +150,7 @@ export default function NotesPage() {
   const empty = notes !== null && notes.length === 0;
 
   return (
-    <section aria-label="Notes" className="px-4 py-4">
+    <section aria-label="Notes" className="px-4 py-4 md:px-6 md:py-6">
       <PageHeader
         title="Notes"
         subtitle="Your thoughts, ideas and checklists in one place. Search them, filter by tag, or ask Clio about them."
@@ -175,13 +187,33 @@ export default function NotesPage() {
         </button>
       </div>
 
-      {notes !== null && notes.length > 0 ? (
-        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-          <Chip tone="teal" selected={activeTag === null} onClick={() => setTag(null)}>{`All ${notes.length}`}</Chip>
+      {notes !== null ? (
+        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 pt-5">
+          <Chip tone="teal" selected={!showArchived && activeTag === null} onClick={() => { setShowArchived(false); setTag(null); }}>{`All ${notes.length}`}</Chip>
           {tags.map(([t, n]) => (
-            <Chip key={t} selected={activeTag === t} onClick={() => setTag(activeTag === t ? null : t)}>{`${t} ${n}`}</Chip>
+            <Chip key={t} selected={!showArchived && activeTag === t} onClick={() => { setShowArchived(false); setTag(activeTag === t ? null : t); }}>{`${t} ${n}`}</Chip>
           ))}
+          <Chip selected={showArchived} onClick={() => setShowArchived((v) => !v)} icon={<Archive size={12} />}>Archived</Chip>
         </div>
+      ) : null}
+
+      {showArchived ? (
+        <section aria-label="Archived notes" className="mt-4">
+          <p className="mb-3 text-xs text-ink-soft">Archived notes are kept but hidden. Unarchive one to bring it back.</p>
+          {archivedNotes === null ? (
+            <div aria-busy="true" aria-label="Loading archived notes" className="h-24 animate-pulse rounded-2xl bg-inset" />
+          ) : archivedNotes.length === 0 ? (
+            <p className="text-sm text-ink-soft">Nothing archived.</p>
+          ) : (
+            <ul className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {archivedNotes.map((n) => (
+                <li key={n.path}>
+                  <ChecklistNote note={n} onToggle={(i, c) => toggle(n, i, c)} onConflict={refetch} onArchive={() => archiveNote(n.path, false)} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       ) : null}
 
       {error ? (
@@ -194,33 +226,39 @@ export default function NotesPage() {
       ) : null}
 
       {loading ? (
-        <div aria-busy="true" aria-label="Loading notes" className="mt-4 space-y-2">
+        <div aria-busy="true" aria-label="Loading notes" className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-inset" />)}
         </div>
       ) : null}
 
-      {empty && !error ? (
+      {empty && !error && !showArchived ? (
         <div className="mt-4 rounded-2xl border border-hairline bg-card p-6 text-center">
           <p className="text-sm text-ink-soft">No notes yet</p>
         </div>
       ) : null}
 
-      {notes !== null && !empty && visible.length === 0 ? (
+      {notes !== null && !empty && visible.length === 0 && !showArchived ? (
         <p className="mt-4 text-sm text-ink-soft">No matching notes.</p>
       ) : null}
 
-      {visible.length > 0 ? (
-        <ul className="mt-4 space-y-3">
+      {visible.length > 0 && !showArchived ? (
+        <ul className="mt-4 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((n) => (
             <li key={n.path}>
-              <ChecklistNote note={n} onToggle={(i, c) => toggle(n, i, c)} onConflict={refetch} onEdit={() => void openEdit(n)} />
+              <ChecklistNote
+                note={n}
+                onToggle={(i, c) => toggle(n, i, c)}
+                onConflict={refetch}
+                onEdit={() => void openEdit(n)}
+                onArchive={n.path.startsWith('pending:') ? undefined : () => archiveNote(n.path, true)} // a note still waiting to sync can't be archived yet
+              />
             </li>
           ))}
         </ul>
       ) : null}
 
       <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="New note">
-        <QuickNote onSave={submitNote} />
+        <QuickNote onSave={submitNote} onCancel={() => setNewOpen(false)} />
       </Sheet>
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title="Edit note">
         {editing?.loaded ? (

@@ -49,6 +49,7 @@ export function createReminderService({ vault, now = () => new Date() }) {
     ...(f.frontmatter.snoozedUntil ? { snoozedUntil: f.frontmatter.snoozedUntil } : {}),
     ...(f.frontmatter.completedAt ? { completedAt: f.frontmatter.completedAt } : {}),
     ...(f.frontmatter.created ? { createdAt: f.frontmatter.created } : {}),
+    ...(f.frontmatter.archived === true ? { archived: true, ...(f.frontmatter.archivedAt ? { archivedAt: f.frontmatter.archivedAt } : {}) } : {}),
     extras: f.frontmatter.extras ?? {},
     notes: f.body.trim(),
   });
@@ -98,7 +99,8 @@ export function createReminderService({ vault, now = () => new Date() }) {
     return toReminder({ path: pathFor(id), frontmatter, body: input.notes ? `${input.notes}\n` : '' });
   }
 
-  async function list({ from, to, done } = {}) {
+  /** Active reminders by default; `archived: true` lists only the archived ones. */
+  async function list({ from, to, done, archived = false } = {}) {
     const files = await vault.list(DIR);
     const out = [];
     for (const p of files) {
@@ -109,6 +111,7 @@ export function createReminderService({ vault, now = () => new Date() }) {
       if (from && due < new Date(from).getTime()) continue;
       if (to && due > new Date(to).getTime()) continue;
       if (done !== undefined && r.done !== done) continue;
+      if (Boolean(r.archived) !== Boolean(archived)) continue;
       out.push(r);
     }
     return out.sort((a, b) => new Date(a.due) - new Date(b.due));
@@ -150,10 +153,11 @@ export function createReminderService({ vault, now = () => new Date() }) {
     return save(f, { snoozedUntil: until.toISOString() });
   }
 
-  async function remove(id) {
+  /** Reminders are never deleted: archiving hides one from lists and notifications, and can be undone. */
+  async function archive(id, archived = true) {
     const f = await load(id);
-    await vault.remove(f.path, { expectedHash: f.hash });
+    return save(f, archived ? { archived: true, archivedAt: now().toISOString() } : { archived: undefined, archivedAt: undefined });
   }
 
-  return { create, list, update, complete, snooze, remove };
+  return { create, list, update, complete, snooze, archive };
 }

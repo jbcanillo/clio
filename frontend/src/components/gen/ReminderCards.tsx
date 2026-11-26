@@ -1,9 +1,11 @@
-import { Camera, MapPin, User } from 'lucide-react';
+import { Camera, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { tomorrowNineAm } from '../../lib/today';
 import type { Person, Place, Reminder } from '../../lib/types';
 import { mapLink, placeLabel } from '../media/PlacePicker';
 import { Chip } from '../ui/Chip';
+import { ArchiveButton } from '../ui/ArchiveButton';
+import { PersonChip } from '../ui/PersonChip';
 import { CircleCheck } from '../ui/CircleCheck';
 
 interface Props {
@@ -11,6 +13,8 @@ interface Props {
   onComplete: (id: string) => Promise<void> | void;
   onSnooze: (id: string, until: string) => Promise<void> | void;
   onEdit?: (r: Reminder) => void;
+  /** Archives a reminder, or restores an archived one. Reminders are never deleted. */
+  onArchive?: (id: string, archived: boolean) => Promise<unknown> | void;
   grouped?: boolean;
   /** The owner's IANA timezone; due times and "Tomorrow 9:00" use it. Falls back to the browser's. */
   timezone?: string;
@@ -43,7 +47,7 @@ function attachmentsOf(r: Reminder) {
   };
 }
 
-function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
+function Card({ r, onComplete, onSnooze, onEdit, onArchive, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
   const [checked, setChecked] = useState(r.done);
   const [failed, setFailed] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -74,13 +78,14 @@ function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'remind
   return (
     <li
       data-overdue={overdue ? 'true' : 'false'}
-      className={`rounded-2xl border border-hairline bg-card p-3 ${overdue ? 'ring-2 ring-ember' : ''}`}
+      data-archived={r.archived ? 'true' : undefined}
+      className={`rounded-2xl border border-hairline border-l-[3px] border-l-ember bg-card p-3 shadow-card ${overdue && !r.archived ? 'ring-2 ring-ember' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <CircleCheck checked={checked} onChange={complete} label={`Complete ${r.title}`} />
+        {r.archived ? null : <CircleCheck checked={checked} onChange={complete} label={`Complete ${r.title}`} />}
         <div className="min-w-0 flex-1">
           <div className={`truncate font-medium text-ink ${checked ? 'line-through opacity-60' : ''}`}>
-            {onEdit ? (
+            {onEdit && !r.archived ? (
               <button type="button" className="truncate text-left" onClick={() => onEdit(r)}>{r.title}</button>
             ) : (
               r.title
@@ -90,13 +95,15 @@ function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'remind
             <Chip tone={overdue ? 'ember' : 'neutral'}>{fmt(r.due, timezone)}</Chip>
             {r.priority === 'high' ? <Chip tone="ember">high</Chip> : <Chip>{r.priority}</Chip>}
             {r.repeat !== 'never' ? <Chip tone="teal">{r.repeat}</Chip> : null}
-            {att.contact ? <Chip icon={<User size={12} />}>{[att.contact.name, att.contact.phone, att.contact.email].filter(Boolean).join(' · ')}</Chip> : null}
+            {att.contact ? <PersonChip person={att.contact} /> : null}
             {att.location ? (
               <a href={mapLink(att.location)} target="_blank" rel="noreferrer noopener"><Chip tone="ember" icon={<MapPin size={12} />}>{placeLabel(att.location)}</Chip></a>
             ) : null}
             {att.photos.length ? <Chip icon={<Camera size={12} />}>{String(att.photos.length)}</Chip> : null}
           </div>
         </div>
+        {onArchive ? <ArchiveButton label={r.title} archived={r.archived} onClick={() => onArchive(r.id, !r.archived)} /> : null}
+        {r.archived ? null : (
         <div className="relative">
           <button
             type="button"
@@ -119,16 +126,17 @@ function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'remind
             </div>
           ) : null}
         </div>
+        )}
       </div>
       {failed ? <p role="alert" className="mt-2 text-xs text-error">Couldn't update that reminder.</p> : null}
     </li>
   );
 }
 
-export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, grouped, timezone }: Props) {
+export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, onArchive, grouped, timezone }: Props) {
   if (reminders.length === 0) return <p className="text-sm text-ink-soft">Nothing coming up.</p>;
   // Keyed by server-driven fields so a refetch (e.g. a repeating reminder advancing, same id) re-syncs card state.
-  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} timezone={timezone} />;
+  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}:${r.archived ? 'a' : ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} onArchive={onArchive} timezone={timezone} />;
   if (!grouped) return <ul className="space-y-2">{reminders.map(card)}</ul>;
   const high = reminders.filter((r) => r.priority === 'high');
   const rest = reminders.filter((r) => r.priority !== 'high');

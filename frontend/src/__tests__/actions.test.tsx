@@ -118,37 +118,43 @@ describe('LiveReminders write-through', () => {
   });
 });
 
-describe('delete_reminder approval card', () => {
+describe('archive_reminder approval card (nothing is ever deleted)', () => {
   const props = (respond = vi.fn(), args = { id: 'r1', title: 'Totally harmless update' }) => ({ status: 'executing', args, respond });
+  const archiveCalls = () => apiFetch.mock.calls.filter(([p]) => String(p).endsWith('/archive'));
 
-  it('shows the REAL title of the reminder being deleted, not the title the model supplied', async () => {
+  it('there is no delete_reminder action any more', () => {
     mount();
-    render(actions.delete_reminder.renderAndWaitForResponse(props()));
+    expect(actions.delete_reminder).toBeUndefined();
+  });
+  it('shows the REAL title of the reminder being archived, not the title the model supplied', async () => {
+    mount();
+    render(actions.archive_reminder.renderAndWaitForResponse(props()));
     expect(await screen.findByText('Real Dentist')).toBeInTheDocument();
     expect(screen.queryByText(/Totally harmless update/)).toBeNull();
   });
-  it('deletes only after approval, using the id, and answers "deleted"', async () => {
+  it('archives only after approval, using the id, and never sends a DELETE', async () => {
     const respond = vi.fn();
     mount();
-    render(actions.delete_reminder.renderAndWaitForResponse(props(respond)));
+    render(actions.archive_reminder.renderAndWaitForResponse(props(respond)));
     await screen.findByText('Real Dentist');
-    expect(apiFetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+    expect(archiveCalls()).toHaveLength(0);
     await userEvent.click(screen.getByRole('button', { name: /approve/i }));
-    await waitFor(() => expect(respond).toHaveBeenCalledWith('deleted'));
-    expect(apiFetch).toHaveBeenCalledWith('/api/reminders/r1', { method: 'DELETE' });
+    await waitFor(() => expect(respond).toHaveBeenCalledWith(expect.stringMatching(/^archived/)));
+    expect(apiFetch).toHaveBeenCalledWith('/api/reminders/r1/archive', { method: 'POST' });
+    expect(apiFetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
-  it('cancel answers "cancelled" and deletes nothing', async () => {
+  it('cancel answers "cancelled" and archives nothing', async () => {
     const respond = vi.fn();
     mount();
-    render(actions.delete_reminder.renderAndWaitForResponse(props(respond)));
+    render(actions.archive_reminder.renderAndWaitForResponse(props(respond)));
     await userEvent.click(await screen.findByRole('button', { name: /cancel/i }));
     expect(respond).toHaveBeenCalledWith('cancelled');
-    expect(apiFetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+    expect(archiveCalls()).toHaveLength(0);
   });
   it('an id that matches no reminder cannot be approved', async () => {
     const respond = vi.fn();
     mount();
-    render(actions.delete_reminder.renderAndWaitForResponse(props(respond, { id: 'nope', title: 'Anything' })));
+    render(actions.archive_reminder.renderAndWaitForResponse(props(respond, { id: 'nope', title: 'Anything' })));
     expect(await screen.findByText(/could not find that reminder/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
   });

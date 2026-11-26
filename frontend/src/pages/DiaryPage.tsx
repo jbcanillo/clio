@@ -1,3 +1,4 @@
+import { Archive } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ClioChat } from '../components/chat/ClioChat';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -6,10 +7,12 @@ import { CheckinForm, type CheckinValues } from '../components/gen/CheckinForm';
 import { DiaryReflection } from '../components/gen/DiaryReflection';
 import { WeeklyReflection } from '../components/gen/WeeklyReflection';
 import { Sheet } from '../components/ui/Sheet';
+import { Chip } from '../components/ui/Chip';
+import { ArchiveButton } from '../components/ui/ArchiveButton';
 import { ClioActions, saveCheckin } from '../copilot/actions';
 import { useJournal } from '../hooks/useJournal';
 import { apiFetch } from '../lib/api';
-import { dailyRange } from '../lib/clioApi';
+import { archiveDay, archivedDays, archiveJournalEntry, dailyRange, listJournal, type JournalEntry } from '../lib/clioApi';
 import { loadDay, updateCheckin } from '../lib/journal';
 import { useDataVersion } from '../lib/dataEvents';
 import { addDays, todayIn } from '../lib/today';
@@ -40,9 +43,40 @@ function dayIn(iso: string, tz: string): string {
 
 type Item = { kind: 'day'; date: string; day: DaySummary } | { kind: 'journal'; date: string; entry: LegacyEntry };
 
+/** A free-form journal entry (Clio/Events), with its archive or unarchive button. */
+function JournalEntryCard({ date, entry, onArchive }: { date: string; entry: { text: string; mood?: string | number | null; archived?: boolean }; onArchive: () => Promise<unknown> }) {
+  return (
+    <div className="rounded-2xl border-l-[3px] border-l-ink-muted bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{date}</span>
+        <span className="flex items-center gap-2">
+          {entry.mood ? <span>{entry.mood}</span> : null}
+          <ArchiveButton label={`journal entry from ${date}`} archived={entry.archived} onClick={onArchive} />
+        </span>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{entry.text}</p>
+    </div>
+  );
+}
+
 export default function DiaryPage() {
   const version = useDataVersion('daily');
-  const { entries: journal } = useJournal() as { entries: LegacyEntry[] };
+  const { entries: journal, refresh: refreshJournal } = useJournal() as { entries: LegacyEntry[]; refresh: () => Promise<void> };
+  // Archived days and entries load only when that view is open.
+  const [showArchived, setShowArchived] = useState(false);
+  const [archived, setArchived] = useState<{ days: DaySummary[]; entries: JournalEntry[] } | null>(null);
+  useEffect(() => {
+    if (!showArchived) return;
+    let live = true;
+    Promise.all([archivedDays(), listJournal({ archived: true })])
+      .then(([days, entries]) => { if (live) setArchived({ days, entries }); })
+      .catch(() => { if (live) setArchived({ days: [], entries: [] }); });
+    return () => { live = false; };
+  }, [showArchived, version]);
+  const toggleEntry = async (id: string, next: boolean) => {
+    await archiveJournalEntry(id, next); // emits 'daily'
+    await refreshJournal();
+  };
   const [tz, setTz] = useState('UTC');
   const [selected, setSelected] = useState<string | null>(null);
   const [days, setDays] = useState<DaySummary[] | null>(null);
@@ -133,7 +167,7 @@ export default function DiaryPage() {
   const hasEntries = weekDays.some((d) => d.hasEntry);
 
   return (
-    <section aria-label="Journal" className="px-4 py-4">
+    <section aria-label="Journal" className="px-4 py-4 md:px-6 md:py-6">
       <PageHeader
         title="Journal"
         subtitle="Check in once a day with your mood and a few words, then look back on your week and Clio's reflections."
@@ -178,8 +212,36 @@ export default function DiaryPage() {
       {hasEntries && !error ? <div className="mt-4"><WeeklyReflection days={weekDays} /></div> : null}
 
       {days !== null && !error ? (
-        <section className="mt-6" aria-label="Timeline log">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Timeline log</h3>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{showArchived ? 'Archived' : 'Timeline log'}</h3>
+          <Chip selected={showArchived} onClick={() => setShowArchived((v) => !v)} icon={<Archive size={12} />}>Archived</Chip>
+        </div>
+      ) : null}
+
+      {showArchived && !error ? (
+        <section className="mt-2" aria-label="Archived journal">
+          <p className="mb-3 text-xs text-ink-soft">Archived days and entries are kept but hidden from your week and mood chart. Unarchive one to bring it back.</p>
+          {archived === null ? (
+            <div aria-busy="true" aria-label="Loading archived journal" className="h-16 animate-pulse rounded-2xl bg-inset" />
+          ) : archived.days.length + archived.entries.length === 0 ? (
+            <p className="text-sm text-ink-soft">Nothing archived.</p>
+          ) : (
+            <ul className="space-y-3">
+              {archived.days.map((d) => (
+                <li key={`ad-${d.date}`}><DiaryReflection day={d} onArchive={() => archiveDay(d.date, false)} /></li>
+              ))}
+              {archived.entries.map((e) => (
+                <li key={`aj-${e.id}`}>
+                  <JournalEntryCard date={dayIn(e.createdAt, tz)} entry={e} onArchive={() => toggleEntry(e.id, false)} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      {days !== null && !error && !showArchived ? (
+        <section className="mt-2" aria-label="Timeline log">
           {empty ? (
             <div className="rounded-2xl border border-hairline bg-card p-6 text-center">
               <p className="text-sm text-ink-soft">No entries this week yet.</p>
@@ -191,14 +253,12 @@ export default function DiaryPage() {
             <ul className="space-y-3">
               {items.map((it) =>
                 it.kind === 'day' ? (
-                  <li key={`d-${it.date}`}><DiaryReflection day={it.day} onEdit={() => void openEdit(it.date)} /></li>
+                  <li key={`d-${it.date}`}>
+                    <DiaryReflection day={it.day} onEdit={() => void openEdit(it.date)} onArchive={() => archiveDay(it.date, true)} />
+                  </li>
                 ) : (
-                  <li key={`j-${it.entry.id}`} className="rounded-2xl border-l-[3px] border-l-ink-muted bg-card p-4 shadow-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{it.date}</span>
-                      {it.entry.mood ? <span>{it.entry.mood}</span> : null}
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{it.entry.text}</p>
+                  <li key={`j-${it.entry.id}`}>
+                    <JournalEntryCard date={it.date} entry={it.entry} onArchive={() => toggleEntry(String(it.entry.id), true)} />
                   </li>
                 ),
               )}

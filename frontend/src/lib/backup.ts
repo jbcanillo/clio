@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 import { apiFetch } from './api';
 import { emitDataChanged } from './dataEvents';
 import { deriveKey } from '../offline/crypto';
-import remindersDB, { createJournalEntry, deleteAllJournalEntries } from '../utils/store';
+import remindersDB, { archiveAllJournalEntries, createJournalEntry } from '../utils/store';
 
 /**
  * Encrypted backups of everything Clio stores.
@@ -166,8 +166,8 @@ export function batchFiles(files: BackupFile[], maxChars = BATCH_CHARS, maxFiles
 }
 
 /**
- * Writes an opened backup to the server. `replace` removes Clio items the backup does not have
- * (photos are always kept); otherwise the backup is merged in, overwriting items it also has.
+ * Writes an opened backup to the server. `replace` archives the Clio items the backup does not
+ * have (nothing is ever deleted); otherwise the backup is merged in, overwriting items it also has.
  */
 export async function restoreBackup(opened: OpenedBackup, { replace }: { replace: boolean }, onProgress?: (done: number, total: number) => void): Promise<void> {
   requireOnline();
@@ -181,21 +181,22 @@ export async function restoreBackup(opened: OpenedBackup, { replace }: { replace
         done += files.length;
         onProgress?.(done, opened.backup.files.length);
       }
-      await apiFetch('/api/backup/restore/finish', { method: 'POST', json: { keep: opened.backup.files.map((f) => f.path), prune: replace } });
+      await apiFetch('/api/backup/restore/finish', { method: 'POST', json: { keep: opened.backup.files.map((f) => f.path), archiveMissing: replace } });
       return;
     }
     // Version 1 files hold reminders and journal entries in the app's own shape.
     const { reminders, journal = [] } = opened.backup;
     const total = reminders.length + journal.length;
     let done = 0;
-    if (replace) await Promise.all([remindersDB.deleteAllReminders(), deleteAllJournalEntries()]);
+    if (replace) await Promise.all([remindersDB.archiveAllReminders(), archiveAllJournalEntries()]);
     for (const r of reminders) {
       const created = await remindersDB.createReminder(r);
       if (r.completed) await remindersDB.updateReminder({ ...r, id: created.id });
       onProgress?.(++done, total);
     }
     for (const j of journal) {
-      await createJournalEntry(j);
+      // A fresh id: the archived originals keep theirs, and ids must stay unique.
+      await createJournalEntry({ ...j, id: undefined });
       onProgress?.(++done, total);
     }
   } finally {

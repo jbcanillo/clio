@@ -39,13 +39,12 @@ describe('SettingsPage', () => {
     const put = apiFetch.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[1].json).toEqual({ openrouterModel: 'openai/gpt-4o-mini', openrouterKey: 'sk-or-new' });
   });
-  it('shows each area as its own panel, including backup & restore', async () => {
+  it('shows the AI and check-in panels only (backup has its own page; the numdum import is gone)', async () => {
     render(<SettingsPage />);
     await screen.findByText(/key saved/i);
-    for (const name of ['AI (OpenRouter)', 'Daily check-ins', 'Backup & restore', 'Import from the old numdum']) {
-      expect(screen.getByRole('region', { name })).toBeInTheDocument();
-    }
-    expect(screen.getByRole('button', { name: /download backup/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open backup/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'AI (OpenRouter)' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Daily check-ins' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /backup/i })).toBeNull();
+    expect(screen.queryByText(/numdum/i)).toBeNull();
   });
 });

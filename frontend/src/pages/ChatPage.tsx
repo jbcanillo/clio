@@ -77,14 +77,14 @@ export default function ChatPage() {
 
   return (
     <section aria-label="Chat" className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-4 pt-4">
+      <div className="shrink-0 px-4 pt-4 md:px-6 md:pt-6">
         <PageHeader
           className="mb-1"
           title="Chat with Clio"
           subtitle="Talk about your day, think out loud, or ask Clio to remember things for you."
         />
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pt-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pt-2 md:px-6">
         <div className="flex items-center gap-2">
           {pending > 0 && <span className="badge badge-sm">{pending} waiting to sync</span>}
         </div>

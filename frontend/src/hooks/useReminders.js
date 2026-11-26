@@ -46,14 +46,6 @@ const useReminders = () => {
     }
   };
 
-  const deleteReminder = async (id) => {
-    try {
-      await db.deleteReminder(id);
-      setReminders(prev => prev.filter(r => r.id !== id));
-    } catch (err) {
-      throw new Error('Failed to delete reminder');
-    }
-  };
 
   const completeReminder = async (id) => {
     try {
@@ -86,7 +78,6 @@ const useReminders = () => {
     refresh,
     createReminder,
     updateReminder,
-    deleteReminder,
     completeReminder,
     snoozeReminder,
   };

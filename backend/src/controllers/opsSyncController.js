@@ -13,6 +13,8 @@ const op = z.discriminatedUnion('kind', [
   z.object({ ...base, kind: z.literal('reminder.update'), reminderId, patch }).strict(),
   z.object({ ...base, kind: z.literal('reminder.complete'), reminderId }).strict(),
   z.object({ ...base, kind: z.literal('reminder.snooze'), reminderId, until: snooze.shape.until }).strict(),
+  z.object({ ...base, kind: z.literal('reminder.archive'), reminderId, archived: z.boolean() }).strict(),
+  // Queued by older app versions before deletion was removed; applied as an archive.
   z.object({ ...base, kind: z.literal('reminder.delete'), reminderId }).strict(),
   z.object({ ...base, kind: z.literal('daily.append'), date: dateParam, entry }).strict(),
   z.object({ ...base, kind: z.literal('attachment.put'), ...attachmentBody.shape }).strict(),

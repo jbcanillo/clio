@@ -53,11 +53,19 @@ describe('reminderService', () => {
     expect((await svc.list({ from: '2026-01-03T00:00:00Z' })).map((r) => r.id)).toEqual([a.id]);
     expect((await svc.list()).map((r) => r.title)).toEqual(['A', 'B']);
   });
-  it('remove deletes the reminder; unknown ids throw not_found', async () => {
+  it('archive hides a reminder without deleting it, and unarchive brings it back; unknown ids throw not_found', async () => {
     const r = await svc.create(base);
-    await svc.remove(r.id);
+    const archived = await svc.archive(r.id);
+    expect(archived).toMatchObject({ id: r.id, archived: true, archivedAt: expect.any(String) });
     expect(await svc.list()).toEqual([]);
-    await expect(svc.complete('nope')).rejects.toMatchObject({ code: 'not_found' });
+    expect(await svc.list({ done: false })).toEqual([]); // so the scheduler never notifies it
+    expect((await svc.list({ archived: true })).map((x) => x.id)).toEqual([r.id]);
+    expect(await h.vault.read(`Clio/Reminders/${r.id}.md`)).not.toBeNull(); // the file is still there
+    const back = await svc.archive(r.id, false);
+    expect(back.archived).toBeUndefined();
+    expect((await svc.list()).map((x) => x.id)).toEqual([r.id]);
+    await expect(svc.archive('nope')).rejects.toMatchObject({ code: 'not_found' });
+    expect(svc).not.toHaveProperty('remove');
   });
   it('ignores a reminder file with broken frontmatter', async () => {
     h.writeRaw('Clio/Reminders/bad.md', '---\n: bad: [yaml\n---\n');

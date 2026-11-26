@@ -10,7 +10,7 @@ async function api() {
   const holder = {};
   const a = await makeApi({
     attachments: { put: (x) => holder.att.put(x), get: (f) => holder.att.get(f) },
-    backup: { exportAll: () => holder.b.exportAll(), writeFiles: (f) => holder.b.writeFiles(f), prune: (k) => holder.b.prune(k) },
+    backup: { exportAll: () => holder.b.exportAll(), writeFiles: (f) => holder.b.writeFiles(f), archiveMissing: (k) => holder.b.archiveMissing(k) },
   });
   holder.att = createAttachmentService({ vault: a.h.vault });
   holder.b = createBackupService({ vault: a.h.vault });
@@ -49,12 +49,12 @@ async function snapshot(as) {
 }
 
 /** Restores an export the way the app does: batches of files, then finish. */
-async function restore(as, backup, { prune = true, batch = 3 } = {}) {
+async function restore(as, backup, { archiveMissing = true, batch = 3 } = {}) {
   for (let i = 0; i < backup.files.length; i += batch) {
     const res = await as('post', '/api/backup/restore/files').send({ files: backup.files.slice(i, i + batch) });
     expect(res.status).toBe(200);
   }
-  return as('post', '/api/backup/restore/finish').send({ keep: backup.files.map((f) => f.path), prune });
+  return as('post', '/api/backup/restore/finish').send({ keep: backup.files.map((f) => f.path), archiveMissing });
 }
 
 describe('backup and restore', () => {
@@ -62,7 +62,7 @@ describe('backup and restore', () => {
     const { app } = await api();
     expect((await request(app).post('/api/backup/export')).status).toBe(401);
     expect((await request(app).post('/api/backup/restore/files').send({ files: [] })).status).toBe(401);
-    expect((await request(app).post('/api/backup/restore/finish').send({ keep: [], prune: true })).status).toBe(401);
+    expect((await request(app).post('/api/backup/restore/finish').send({ keep: [], archiveMissing: true })).status).toBe(401);
   });
 
   it('exports every reminder, note, diary day, journal entry, photo and the profile, and is never cached', async () => {
@@ -111,21 +111,25 @@ describe('backup and restore', () => {
     expect((await dst.as('post', '/api/daily/2026-11-20/entries').send({ section: 'ideas', text: 'after restore' })).status).toBe(201);
   });
 
-  it('replace mode removes what the backup did not have (but never photos); merge mode keeps it', async () => {
+  it('replace mode archives (never deletes) what the backup did not have; merge mode keeps it active', async () => {
     const src = await api();
     await seed(src);
     const backup = (await src.as('post', '/api/backup/export')).body;
 
     const dst = await api();
-    await dst.as('post', '/api/reminders').send({ title: 'Only on this device', due: '2026-12-05T09:00:00.000Z' });
+    const extra = (await dst.as('post', '/api/reminders').send({ title: 'Only on this device', due: '2026-12-05T09:00:00.000Z' })).body;
+    await dst.as('post', '/api/journal').send({ text: 'Only here too' });
     await dst.as('post', '/api/attachments').send({ file: 'photo00002.png', mime: 'image/png', data: PNG.toString('base64') });
-    const merged = await restore(dst.as, backup, { prune: false });
-    expect(merged.body).toEqual({ removed: 0 });
+    const merged = await restore(dst.as, backup, { archiveMissing: false });
+    expect(merged.body).toEqual({ archived: 0 });
     expect((await dst.as('get', '/api/reminders')).body.map((r) => r.title)).toContain('Only on this device');
 
-    const replaced = await restore(dst.as, backup, { prune: true });
-    expect(replaced.body).toEqual({ removed: 1 });
+    const replaced = await restore(dst.as, backup, { archiveMissing: true });
+    expect(replaced.body).toEqual({ archived: 2 });
     expect((await dst.as('get', '/api/reminders')).body.map((r) => r.title).sort()).toEqual(['Call the plumber', 'Pay rent']);
+    expect((await dst.as('get', '/api/reminders?archived=true')).body.map((r) => r.title)).toEqual(['Only on this device']);
+    expect((await dst.as('get', '/api/journal?archived=true')).body.map((e) => e.text)).toEqual(['Only here too']);
+    expect(await dst.h.vault.read(`Clio/Reminders/${extra.id}.md`)).not.toBeNull(); // still on disk
     expect((await dst.as('get', '/api/attachments/photo00002.png')).status).toBe(200);
   });
 

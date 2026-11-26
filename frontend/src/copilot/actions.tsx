@@ -16,7 +16,7 @@ import { apiFetch } from '../lib/api';
 import { emitDataChanged } from '../lib/dataEvents';
 import { saveCheckin } from '../lib/journal';
 import {
-  completeReminder, createReminder, dailyRange, deleteReminder, listNotes, listReminders, snoozeReminder, toggleChecklist, updateReminder,
+  completeReminder, createReminder, dailyRange, archiveReminder, listNotes, listReminders, snoozeReminder, toggleChecklist, updateReminder,
 } from '../lib/clioApi';
 import { addDays, nextNineAm, todayIn } from '../lib/today';
 import type { DaySummary, Hit, MoodPoint, NoteSummary, Reminder, Scope } from '../lib/types';
@@ -60,7 +60,7 @@ function LiveSearch({ query, includePrivate }: { query: string; includePrivate: 
 }
 
 /** The approval card shows the reminder as stored on the server, never a title supplied by the model. */
-function DeleteReminderConfirm({ id, respond }: { id: string; respond?: (answer: string) => void }) {
+function ArchiveReminderConfirm({ id, respond }: { id: string; respond?: (answer: string) => void }) {
   const [state, setState] = useState<{ title: string } | 'missing' | null>(null);
   useEffect(() => {
     listReminders().then((all) => {
@@ -72,22 +72,22 @@ function DeleteReminderConfirm({ id, respond }: { id: string; respond?: (answer:
   if (state === 'missing') {
     return (
       <div className="card bg-base-200 p-4 space-y-2">
-        <p className="text-sm">Could not find that reminder, so nothing will be deleted.</p>
+        <p className="text-sm">Could not find that reminder, so nothing was archived.</p>
         <button className="btn btn-ghost btn-sm" onClick={() => respond?.('cancelled')}>Dismiss</button>
       </div>
     );
   }
   return (
     <ConfirmCard
-      title="Delete this reminder?"
+      title="Archive this reminder?"
       detail={state.title}
       onCancel={() => respond?.('cancelled')}
       onApprove={async () => {
         try {
-          await deleteReminder(id);
-          respond?.('deleted');
+          await archiveReminder(id, true);
+          respond?.('archived (kept, and restorable from Reminders → Archived)');
         } catch (e) {
-          respond?.(`Delete failed: ${(e as Error).message}`);
+          respond?.(`Archive failed: ${(e as Error).message}`);
         }
       }}
     />
@@ -326,14 +326,14 @@ function PreviewNote() {
   return null;
 }
 
-function DeleteReminder() {
+function ArchiveReminder() {
   useCopilotAction({
-    name: 'delete_reminder',
-    description: 'Delete a reminder after the owner approves.',
+    name: 'archive_reminder',
+    description: 'Archive a reminder after the owner approves. Nothing in Clio is ever deleted; archived reminders are hidden and can be restored.',
     parameters: [{ name: 'id', type: 'string', description: 'Reminder id', required: true }],
     renderAndWaitForResponse: ({ status, args, respond }) => {
       if (status === 'complete') return <p className="text-sm opacity-70">Done.</p>;
-      return <DeleteReminderConfirm id={String(args.id ?? '')} respond={respond} />;
+      return <ArchiveReminderConfirm id={String(args.id ?? '')} respond={respond} />;
     },
   });
   return null;
@@ -419,7 +419,7 @@ function ProposeTasks({ timezone }: ActionProps) {
  */
 const ACTION_COMPONENTS: Record<string, (p: ActionProps) => JSX.Element | null> = {
   show_reminders: ShowReminders,
-  delete_reminder: DeleteReminder,
+  archive_reminder: ArchiveReminder,
   show_mood_chart: ShowMoodChart,
   checkin: CheckinAction,
   show_search_results: ShowSearchResults,
@@ -433,7 +433,7 @@ const ACTION_COMPONENTS: Record<string, (p: ActionProps) => JSX.Element | null> 
 
 export const ACTIONS_BY_SCOPE: Record<Scope, string[]> = {
   chat: Object.keys(ACTION_COMPONENTS),
-  reminders: ['show_reminders', 'delete_reminder', 'propose_reschedule'],
+  reminders: ['show_reminders', 'archive_reminder', 'propose_reschedule'],
   diary: ['checkin', 'show_mood_chart', 'show_diary', 'show_reflection'],
   notes: ['show_search_results', 'preview_note', 'show_note', 'propose_tasks'],
 };

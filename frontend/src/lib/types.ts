@@ -13,6 +13,9 @@ export interface Reminder {
   notes: string;
   /** Free-form extras: photos (attachment file names), contact, location, checklist… */
   extras?: Record<string, unknown>;
+  /** Archived reminders are hidden from lists and notifications (nothing is ever deleted). */
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 /** Someone attached to a check-in or reminder. */
@@ -56,6 +59,8 @@ export interface NoteSummary {
   checklist: { index: number; text: string; done: boolean }[];
   /** Attachment file names linked from the note body. */
   photos?: string[];
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 export interface DaySummary {
@@ -67,6 +72,9 @@ export interface DaySummary {
   hasEntry: boolean;
   sections: { thoughts: number; ideas: number; events: number };
   photos?: string[];
-  people?: string[];
+  /** People with their phone and email. Responses cached by an older version may hold plain names. */
+  people?: (Person | string)[];
   places?: Place[];
+  archived?: boolean;
+  archivedAt?: string;
 }

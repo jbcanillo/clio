@@ -1,5 +1,7 @@
-import { MapPin, Pencil, User } from 'lucide-react';
+import { MapPin, Pencil } from 'lucide-react';
 import { Chip } from '../ui/Chip';
+import { ArchiveButton } from '../ui/ArchiveButton';
+import { PersonChip, personLabel } from '../ui/PersonChip';
 import type { DaySummary } from '../../lib/types';
 import { PhotoStrip } from '../media/PhotoThumb';
 import { mapLink, placeLabel } from '../media/PlacePicker';
@@ -18,9 +20,11 @@ interface Props {
   onExpand?: () => void;
   /** Makes the card open the day for editing. */
   onEdit?: () => void;
+  /** Archives the day (or restores it, on an archived day). Days are never deleted. */
+  onArchive?: () => Promise<unknown> | void;
 }
 
-export function DiaryReflection({ day, tone, onExpand, onEdit }: Props) {
+export function DiaryReflection({ day, tone, onExpand, onEdit, onArchive }: Props) {
   const label = moodLabel(day.mood);
   const hasMedia = !!(day.photos?.length || day.people?.length || day.places?.length);
   const empty = !day.hasEntry || (!day.headline.trim() && !hasMedia);
@@ -30,6 +34,7 @@ export function DiaryReflection({ day, tone, onExpand, onEdit }: Props) {
         <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{day.date}</span>
         <span className="flex items-center gap-2">
           {label && <Chip tone="teal">{label}</Chip>}
+          {onArchive ? <ArchiveButton label={day.date} archived={day.archived} onClick={onArchive} /> : null}
           {onEdit ? (
             <button type="button" onClick={onEdit} aria-label={`Edit ${day.date}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-soft hover:bg-inset after:absolute after:inset-0 after:content-['']">
               <Pencil aria-hidden="true" size={14} />
@@ -45,7 +50,7 @@ export function DiaryReflection({ day, tone, onExpand, onEdit }: Props) {
       {day.photos?.length ? <div className="relative z-10"><PhotoStrip files={day.photos} size="sm" /></div> : null}
       {day.people?.length || day.places?.length ? (
         <div className="relative z-10 flex flex-wrap gap-1.5">
-          {(day.people ?? []).map((n, i) => <Chip key={`p-${n}-${i}`} icon={<User size={12} />}>{n}</Chip>)}
+          {(day.people ?? []).map((p, i) => <PersonChip key={`p-${personLabel(p)}-${i}`} person={p} />)}
           {(day.places ?? []).map((p, i) => (
             <a key={`l-${p.lat}-${p.lng}-${i}`} href={mapLink(p)} target="_blank" rel="noreferrer noopener">
               <Chip tone="ember" icon={<MapPin size={12} />}>{placeLabel(p)}</Chip>

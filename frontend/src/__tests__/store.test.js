@@ -1,4 +1,4 @@
-import remindersDB, { getAllJournalEntries, createJournalEntry, updateJournalEntry, deleteJournalEntry } from '../utils/store';
+import remindersDB, { archiveAllJournalEntries, getAllJournalEntries, createJournalEntry, updateJournalEntry } from '../utils/store';
 
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig()), apiFetch: (...a) => apiFetch(...a) }));
@@ -47,14 +47,16 @@ describe('reminders over the API', () => {
     apiFetch.mockResolvedValueOnce([]);
     await expect(remindersDB.toggleComplete('nope')).rejects.toThrow(/not found/i);
   });
-  it('delete and deleteAll call the API', async () => {
-    apiFetch.mockResolvedValueOnce(undefined);
-    await remindersDB.deleteReminder('r1');
-    expect(apiFetch).toHaveBeenCalledWith('/api/reminders/r1', { method: 'DELETE' });
-    apiFetch.mockReset();
+  it('cannot delete: archiveAll archives every active reminder instead', async () => {
+    expect(remindersDB.deleteReminder).toBeUndefined();
+    expect(remindersDB.deleteAllReminders).toBeUndefined();
     apiFetch.mockResolvedValueOnce([apiReminder, { ...apiReminder, id: 'r2' }]).mockResolvedValue(undefined);
-    await remindersDB.deleteAllReminders();
-    expect(apiFetch.mock.calls.map(([p]) => p)).toEqual(['/api/reminders', '/api/reminders/r1', '/api/reminders/r2']);
+    await remindersDB.archiveAllReminders();
+    expect(apiFetch.mock.calls).toEqual([
+      ['/api/reminders'],
+      ['/api/reminders/r1/archive', { method: 'POST' }],
+      ['/api/reminders/r2/archive', { method: 'POST' }],
+    ]);
   });
 });
 
@@ -69,12 +71,15 @@ describe('journal over the API', () => {
     await createJournalEntry({ id: 123, text: 'Hello', mood: '😊', createdAt: new Date('2026-11-20T08:00:00Z'), tags: ['a'] });
     expect(apiFetch).toHaveBeenCalledWith('/api/journal', { method: 'POST', json: { id: '123', text: 'Hello', mood: '😊', createdAt: '2026-11-20T08:00:00.000Z', extras: { tags: ['a'] } } });
   });
-  it('updates and deletes by id', async () => {
+  it('updates by id, and archives (never deletes) all entries', async () => {
     apiFetch.mockResolvedValue(apiEntry);
     await updateJournalEntry('j1', { text: 'Edited' });
     expect(apiFetch).toHaveBeenCalledWith('/api/journal/j1', { method: 'PUT', json: { text: 'Edited' } });
-    await deleteJournalEntry('j1');
-    expect(apiFetch).toHaveBeenCalledWith('/api/journal/j1', { method: 'DELETE' });
+    apiFetch.mockReset();
+    apiFetch.mockResolvedValueOnce([apiEntry]).mockResolvedValue(apiEntry);
+    await archiveAllJournalEntries();
+    expect(apiFetch).toHaveBeenCalledWith('/api/journal/j1/archive', { method: 'POST' });
+    expect(apiFetch.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
 });
 
@@ -88,11 +93,9 @@ describe('data-change bus', () => {
     apiFetch.mockResolvedValue(apiReminder);
     await remindersDB.createReminder({ title: 'Dentist', dueDate: '2026-12-01T09:00' });
     await remindersDB.updateReminder({ id: 'r1', title: 'Dentist', dueDate: '2026-12-01T09:00' });
-    apiFetch.mockResolvedValueOnce(undefined);
-    await remindersDB.deleteReminder('r1');
     apiFetch.mockResolvedValueOnce([apiReminder]).mockResolvedValueOnce({ ...apiReminder, done: true });
     await remindersDB.toggleComplete('r1');
-    expect(kinds).toEqual(['reminders', 'reminders', 'reminders', 'reminders']);
+    expect(kinds).toEqual(['reminders', 'reminders', 'reminders']);
   });
   it('does not emit when the write fails', async () => {
     const boom = async () => { throw new Error('boom'); };
@@ -107,7 +110,6 @@ describe('data-change bus', () => {
     apiFetch.mockResolvedValue({ id: 'j1', text: 'Hi', createdAt: '2026-11-20T08:00:00.000Z' });
     await createJournalEntry({ text: 'Hi' });
     await updateJournalEntry('j1', { text: 'Hey' });
-    await deleteJournalEntry('j1');
-    expect(kinds).toEqual(['daily', 'daily', 'daily']);
+    expect(kinds).toEqual(['daily', 'daily']);
   });
 });

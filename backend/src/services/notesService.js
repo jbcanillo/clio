@@ -41,18 +41,21 @@ function summarize(note) {
     hash: note.hash,
     checklist,
     photos,
+    ...(fm.archived === true ? { archived: true, ...(fm.archivedAt ? { archivedAt: iso(fm.archivedAt) } : {}) } : {}),
   };
 }
 
 /** Read-only listing of the owner's notes for the Notes tab. */
 export function createNotesService({ vault }) {
-  async function list() {
+  /** Active notes by default; `archived: true` lists only the archived ones. */
+  async function list({ archived = false } = {}) {
     const paths = (await vault.list(NOTES_DIR))
       .filter((p) => !p.slice(NOTES_DIR.length + 1).includes('/') && !p.includes('.conflict-'));
     const out = [];
     for (const p of paths) {
       const note = await vault.read(p);
       if (!note || note.parseError || note.frontmatter?.private === true) continue;
+      if ((note.frontmatter?.archived === true) !== Boolean(archived)) continue;
       out.push(summarize(note));
     }
     // Stable sort keeps file order for notes without a date.
@@ -83,5 +86,18 @@ export function createNotesService({ vault }) {
     if (!found) throw new ValidationError(`no checklist item at index ${index}`);
     return vault.write(path, { frontmatter: current.frontmatter, body: parts.join('') }, { expectedHash: current.hash });
   }
-  return { list, toggleChecklist };
+  /** Notes are never deleted: archiving hides one from the list and can be undone. */
+  async function archive(path, archived = true) {
+    if (typeof path !== 'string' || !NOTE_PATH.test(path)) throw new ValidationError(NOTE_PATH_ERR);
+    if (path.includes('.conflict-')) throw notFound();
+    const current = await vault.read(path);
+    if (!current || current.frontmatter?.private === true) throw notFound();
+    if (current.parseError) throw Object.assign(new Error('Note has unreadable frontmatter; fix it in Obsidian first'), { code: 'parse_error' });
+    const frontmatter = { ...current.frontmatter };
+    if (archived) Object.assign(frontmatter, { archived: true, archivedAt: new Date().toISOString() });
+    else { delete frontmatter.archived; delete frontmatter.archivedAt; }
+    return vault.write(path, { frontmatter, body: current.body }, { expectedHash: current.hash });
+  }
+
+  return { list, toggleChecklist, archive };
 }

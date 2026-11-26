@@ -18,6 +18,7 @@ export function createJournalService({ vault, now = () => new Date(), newId = ()
     ...(f.frontmatter.mood !== undefined ? { mood: f.frontmatter.mood } : {}),
     createdAt: f.frontmatter.createdAt,
     ...(f.frontmatter.extras ? { extras: f.frontmatter.extras } : {}),
+    ...(f.frontmatter.archived === true ? { archived: true, ...(f.frontmatter.archivedAt ? { archivedAt: f.frontmatter.archivedAt } : {}) } : {}),
   });
 
   async function all() {
@@ -35,8 +36,12 @@ export function createJournalService({ vault, now = () => new Date(), newId = ()
     return f;
   }
 
-  async function list() {
-    return (await all()).map(toEntry).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  /** Active entries by default; `archived: true` lists only the archived ones. */
+  async function list({ archived = false } = {}) {
+    return (await all())
+      .filter((f) => (f.frontmatter.archived === true) === Boolean(archived))
+      .map(toEntry)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
   async function create({ id, text, mood, createdAt, extras }, { assumeUnique = false } = {}) {
@@ -85,10 +90,20 @@ export function createJournalService({ vault, now = () => new Date(), newId = ()
     return toEntry({ frontmatter, body });
   }
 
-  async function remove(id) {
+  /** Entries are never deleted: archiving hides one from the list and can be undone. */
+  async function archive(id, archived = true) {
     const f = await find(id);
-    await vault.remove(f.path, { expectedHash: f.hash });
+    const frontmatter = { ...f.frontmatter };
+    if (archived) Object.assign(frontmatter, { archived: true, archivedAt: now().toISOString() });
+    else { delete frontmatter.archived; delete frontmatter.archivedAt; }
+    try {
+      await vault.write(f.path, { frontmatter, body: f.body }, { expectedHash: f.hash });
+    } catch (e) {
+      if (e instanceof ConflictError) throw coded('Entry changed meanwhile', 'conflict');
+      throw e;
+    }
+    return toEntry({ frontmatter, body: f.body });
   }
 
-  return { list, create, update, remove };
+  return { list, create, update, archive };
 }

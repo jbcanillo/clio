@@ -61,8 +61,15 @@ export function overlayReminders(list: ApiReminder[], ops: Op[], now = Date.now(
       case 'reminder.snooze':
         out = out.map((r) => (r.id === op.reminderId ? { ...r, snoozedUntil: op.until, pendingSync: true } : r));
         break;
-      case 'reminder.delete':
-        out = out.filter((r) => r.id !== op.reminderId);
+      case 'reminder.archive':
+        out = out.map((r) => {
+          if (r.id !== op.reminderId) return r;
+          const { archived, archivedAt, ...rest } = r; // eslint-disable-line @typescript-eslint/no-unused-vars
+          return op.archived ? { ...rest, archived: true, archivedAt: new Date(op.createdAt).toISOString(), pendingSync: true } : { ...rest, pendingSync: true };
+        });
+        break;
+      case 'reminder.delete': // queued by an older app version; the server archives it
+        out = out.map((r) => (r.id === op.reminderId ? { ...r, archived: true, pendingSync: true } : r));
         break;
       default:
         break;
@@ -86,7 +93,7 @@ export function overlayDays(days: DaySummary[], ops: Op[]): DaySummary[] {
       next.sections = { thoughts: day.thoughts.length, ideas: day.ideas.length, events: day.events.length };
       next.headline = (day.events[0] ?? day.thoughts[0] ?? day.ideas[0] ?? '').slice(0, 120);
       next.photos = [...day.photos];
-      next.people = day.people.map((p) => p.name);
+      next.people = day.people.map((p) => ({ ...p }));
       next.places = day.places.map((p) => ({ ...p, label: p.label || 'Pinned location' }));
     }
     for (const o of mine) {
@@ -96,7 +103,7 @@ export function overlayDays(days: DaySummary[], ops: Op[]): DaySummary[] {
       } else if ('photo' in o.entry) {
         next.photos = [...(next.photos ?? []), o.entry.photo];
       } else if ('person' in o.entry) {
-        next.people = [...(next.people ?? []), o.entry.person.name];
+        next.people = [...(next.people ?? []), { ...o.entry.person }];
       } else if ('place' in o.entry) {
         next.places = [...(next.places ?? []), { label: o.entry.place.label || 'Pinned location', lat: o.entry.place.lat, lng: o.entry.place.lng }];
       } else {

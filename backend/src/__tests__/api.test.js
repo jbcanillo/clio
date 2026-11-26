@@ -8,7 +8,7 @@ describe('API authentication', () => {
       ['get', '/api/settings'], ['put', '/api/settings'], ['post', '/api/settings/test-key'],
       ['get', '/api/daily/2026-11-23'], ['get', '/api/daily?from=2026-11-22&to=2026-11-23'], ['post', '/api/daily/2026-11-23/entries'],
       ['get', '/api/reminders'], ['post', '/api/reminders'], ['post', '/api/reminders/x/complete'],
-      ['post', '/api/reminders/x/snooze'], ['delete', '/api/reminders/x'],
+      ['post', '/api/reminders/x/snooze'], ['post', '/api/reminders/x/archive'], ['post', '/api/notes/archive'], ['get', '/api/daily/archived'],
       ['get', '/api/notes'], ['get', '/api/search?q=a'], ['get', '/api/analytics/mood?from=2026-11-01&to=2026-11-02'],
     ];
     for (const [m, url] of routes) expect((await request(app)[m](url)).status, `${m} ${url}`).toBe(401);
@@ -116,7 +116,7 @@ describe('daily notes', () => {
 });
 
 describe('reminders', () => {
-  it('supports create, list, snooze, complete and delete', async () => {
+  it('supports create, list, snooze, complete and archive (never delete)', async () => {
     const { as } = await makeApi();
     const created = await as('post', '/api/reminders').send({ title: 'Dentist', due: '2026-12-01T09:00:00Z' });
     expect(created.status).toBe(201);
@@ -125,8 +125,12 @@ describe('reminders', () => {
     expect((await as('post', `/api/reminders/${id}/snooze`).send({ until: '2026-12-01T10:00:00Z' })).body.snoozedUntil).toBe('2026-12-01T10:00:00.000Z');
     expect((await as('post', `/api/reminders/${id}/complete`)).body.done).toBe(true);
     expect((await as('get', '/api/reminders?done=false')).body).toEqual([]);
-    expect((await as('delete', `/api/reminders/${id}`)).status).toBe(204);
+    expect((await as('delete', `/api/reminders/${id}`)).status).toBe(404); // there is no delete route
+    expect((await as('post', `/api/reminders/${id}/archive`)).body).toMatchObject({ id, archived: true });
     expect((await as('get', '/api/reminders')).body).toEqual([]);
+    expect((await as('get', '/api/reminders?archived=true')).body.map((r) => r.id)).toEqual([id]);
+    expect((await as('post', `/api/reminders/${id}/unarchive`)).body.archived).toBeUndefined();
+    expect((await as('get', '/api/reminders')).body.map((r) => r.id)).toEqual([id]);
   });
   it('rejects an empty title with 400 and an unknown id with 404', async () => {
     const { as } = await makeApi();

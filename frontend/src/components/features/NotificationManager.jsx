@@ -20,7 +20,7 @@ const NotificationManager = () => {
   };
 
   return (
-    <div className="fixed bottom-24 right-4 left-4 z-50 mx-auto max-w-sm rounded-xl border border-hairline bg-card p-4 shadow-modal sm:left-auto">
+    <div className="fixed bottom-24 right-4 left-4 z-50 mx-auto max-w-sm md:bottom-6 rounded-xl border border-hairline bg-card p-4 shadow-modal sm:left-auto">
       <div className="flex items-start gap-3">
         <Bell className="mt-0.5 h-5 w-5 shrink-0 text-[var(--primary)]" aria-hidden="true" />
         <div className="flex-1">

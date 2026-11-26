@@ -80,7 +80,7 @@ describe('BackupRestore', () => {
     await userEvent.click(screen.getByRole('button', { name: /merge backup/i }));
     expect(await screen.findByText(/restored 2 reminders/i)).toBeInTheDocument();
     const finish = apiFetch.mock.calls.find(([p]) => p === '/api/backup/restore/finish');
-    expect(finish?.[1].json).toEqual({ keep: backup.files.map((f) => f.path), prune: false });
+    expect(finish?.[1].json).toEqual({ keep: backup.files.map((f) => f.path), archiveMissing: false });
     expect(onToast).toHaveBeenCalledWith('Restore complete', 'success');
   }, 30_000);
 

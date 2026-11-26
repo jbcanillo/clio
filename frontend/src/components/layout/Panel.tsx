@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 
-/** A titled card that groups one area of a page (used by Settings and Backup). */
+/** A titled card that groups one area of a page (used by Settings and Privacy). */
 export function Panel({ title, description, icon, children, id }: { title: string; description?: string; icon?: ReactNode; children: ReactNode; id?: string }) {
   const headingId = useId();
   return (

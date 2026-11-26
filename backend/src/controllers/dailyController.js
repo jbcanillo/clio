@@ -31,6 +31,14 @@ export function dailyRouter({ daily, memory }) {
     const { from, to } = parse(range, req.query);
     res.json(await daily.rangeSummaries(from, to));
   }));
+  // Before /daily/:date so "archived" is not read as a date.
+  r.get('/daily/archived', wrap(async (_req, res) => res.json(await daily.archivedDays())));
+  r.post('/daily/:date/archive', wrap(async (req, res) => {
+    res.json(await daily.archive(parse(dateParam, req.params.date), true));
+  }));
+  r.post('/daily/:date/unarchive', wrap(async (req, res) => {
+    res.json(await daily.archive(parse(dateParam, req.params.date), false));
+  }));
   r.get('/daily/:date', wrap(async (req, res) => {
     const date = parse(dateParam, req.params.date);
     const f = await daily.get(date);

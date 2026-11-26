@@ -107,7 +107,12 @@ describe('overlays', () => {
     expect(out.find((r) => r.id === 'a')).not.toHaveProperty('snoozedUntil');
     expect(out.find((r) => r.id === 'rem1aaaaaaa')).toMatchObject({ snoozedUntil: '2030-02-01T00:00:00.000Z', pendingSync: true });
     expect(overlayReminders(base, [{ id: 'c', createdAt: T, kind: 'reminder.complete', reminderId: 'a' }])[0]).toMatchObject({ done: true });
-    expect(overlayReminders(base, [{ id: 'd', createdAt: T, kind: 'reminder.delete', reminderId: 'a' }])).toEqual([]);
+    // An old queued delete and a new archive both flag the reminder archived; the list view filters it out.
+    expect(overlayReminders(base, [{ id: 'd', createdAt: T, kind: 'reminder.delete', reminderId: 'a' }])[0]).toMatchObject({ id: 'a', archived: true });
+    const archived = overlayReminders(base, [{ id: 'x', createdAt: T, kind: 'reminder.archive', reminderId: 'a', archived: true }]);
+    expect(archived[0]).toMatchObject({ id: 'a', archived: true, archivedAt: new Date(T).toISOString(), pendingSync: true });
+    const restored = overlayReminders(archived, [{ id: 'y', createdAt: T + 1, kind: 'reminder.archive', reminderId: 'a', archived: false }]);
+    expect(restored[0]).not.toHaveProperty('archived');
   });
 
   it('completing a repeating reminder moves its due date past now, and is idempotent', () => {

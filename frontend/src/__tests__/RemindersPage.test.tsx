@@ -6,9 +6,11 @@ import { emitDataChanged } from '../lib/dataEvents';
 import type { Reminder } from '../lib/types';
 
 const listReminders = vi.fn();
+const archiveReminder = vi.fn();
 vi.mock('../lib/clioApi', async (orig) => ({
   ...(await orig<object>()),
   listReminders: (...a: unknown[]) => listReminders(...a),
+  archiveReminder: (...a: unknown[]) => archiveReminder(...a),
   completeReminder: vi.fn(),
   snoozeReminder: vi.fn(),
 }));
@@ -312,5 +314,44 @@ describe('RemindersPage', () => {
     expect(screen.getByRole('button', { name: /^Due today 2$/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Due today/ }));
     expect(screen.getByText('T-over')).toBeInTheDocument();
+  });
+});
+
+describe('RemindersPage: daily rhythm and archiving', () => {
+  it('shows the daily rhythm above the reminders list', async () => {
+    settings();
+    listReminders.mockResolvedValue([mk('a')]);
+    renderPage();
+    const rhythm = await screen.findByRole('progressbar', { name: 'Daily rhythm' });
+    const card = await screen.findByText('T-a');
+    expect(rhythm.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('archives from a card (no delete anywhere) and lists archived reminders with Unarchive', async () => {
+    settings();
+    archiveReminder.mockReset().mockResolvedValue({});
+    listReminders.mockImplementation(async (opts?: { archived?: boolean }) => (opts?.archived ? [mk('old', { title: 'Old one', archived: true })] : [mk('a')]));
+    renderPage();
+    await screen.findByText('T-a');
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
+    await act(async () => { screen.getByRole('button', { name: 'Archive T-a' }).click(); });
+    expect(archiveReminder).toHaveBeenCalledWith('a', true);
+
+    await act(async () => { screen.getByRole('button', { name: 'Archived' }).click(); });
+    const section = await screen.findByRole('region', { name: 'Archived reminders' });
+    expect(await within(section).findByText('Old one')).toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: /snooze/i })).toBeNull();
+    await act(async () => { within(section).getByRole('button', { name: 'Unarchive Old one' }).click(); });
+    expect(archiveReminder).toHaveBeenCalledWith('old', false);
+    expect(listReminders).toHaveBeenCalledWith({ archived: true });
+  });
+
+  it('keeps the Archived view reachable when there are no active reminders', async () => {
+    settings();
+    listReminders.mockImplementation(async (opts?: { archived?: boolean }) => (opts?.archived ? [mk('old', { title: 'Old one', archived: true })] : []));
+    renderPage();
+    await screen.findByText('No reminders yet');
+    await act(async () => { (await screen.findByRole('button', { name: 'Archived' })).click(); });
+    expect(await screen.findByText('Old one')).toBeInTheDocument();
   });
 });

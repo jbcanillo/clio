@@ -28,7 +28,6 @@ function bodyParser(auth) {
   // Restore batches carry photos as base64; the client keeps each batch well under this.
   const backup = express.json({ limit: '30mb' });
   return (req, res, next) => {
-    if (req.path.startsWith('/api/import')) return bulk(req, res, next);
     // Only a signed-in session gets the large backup limit; anyone else is refused before parsing.
     if (req.path.startsWith('/api/backup')) return auth?.verify(req.get('X-Session-Token')) ? backup(req, res, next) : small(req, res, next);
     // Photos travel as base64 JSON, directly or inside an offline sync batch.

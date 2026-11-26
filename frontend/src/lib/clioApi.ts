@@ -3,9 +3,12 @@ import { emitDataChanged } from './dataEvents';
 import { newReminderId, writeOrQueue } from '../offline/instances';
 import type { DaySummary, NoteSummary, Priority, Reminder, Repeat } from './types';
 
-export async function listReminders(opts: { done?: boolean } = {}): Promise<Reminder[]> {
-  const qs = opts.done === undefined ? '' : `?done=${opts.done}`;
-  return apiFetch<Reminder[]>(`/api/reminders${qs}`);
+export async function listReminders(opts: { done?: boolean; archived?: boolean } = {}): Promise<Reminder[]> {
+  const q = new URLSearchParams();
+  if (opts.done !== undefined) q.set('done', String(opts.done));
+  if (opts.archived) q.set('archived', 'true');
+  const qs = q.toString();
+  return apiFetch<Reminder[]>(`/api/reminders${qs ? `?${qs}` : ''}`);
 }
 
 // Writes go through writeOrQueue: with no connection they are queued (encrypted) and synced later.
@@ -71,20 +74,52 @@ export async function createReminder(
   );
 }
 
-export async function deleteReminder(id: string): Promise<void> {
-  await writeOrQueue(
-    { kind: 'reminder.delete', reminderId: id },
+// Nothing in Clio is deleted. Reminders, notes, diary days and journal entries are archived:
+// hidden from the normal lists, kept in the vault and in backups, and restorable from "Archived".
+
+/** Archives (or, with `archived: false`, restores) a reminder. Queued when offline. */
+export async function archiveReminder(id: string, archived = true): Promise<Reminder> {
+  return writeOrQueue(
+    { kind: 'reminder.archive', reminderId: id, archived },
     async () => {
-      await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const r = await apiFetch<Reminder>(`/api/reminders/${encodeURIComponent(id)}/${archived ? 'archive' : 'unarchive'}`, { method: 'POST' });
       emitDataChanged('reminders');
+      return r;
     },
-    () => undefined,
+    () => cachedReminder(id),
     'reminders',
   );
 }
 
-export async function listNotes(): Promise<NoteSummary[]> {
-  return apiFetch<NoteSummary[]>('/api/notes');
+export async function listNotes(opts: { archived?: boolean } = {}): Promise<NoteSummary[]> {
+  return apiFetch<NoteSummary[]>(opts.archived ? '/api/notes?archived=true' : '/api/notes');
+}
+
+export async function archiveNote(path: string, archived = true): Promise<{ hash: string }> {
+  const r = await apiFetch<{ hash: string }>('/api/notes/archive', { method: 'POST', json: { path, archived } });
+  emitDataChanged('notes');
+  return r;
+}
+
+export async function archivedDays(): Promise<DaySummary[]> {
+  return apiFetch<DaySummary[]>('/api/daily/archived');
+}
+
+export async function archiveDay(date: string, archived = true): Promise<void> {
+  await apiFetch(`/api/daily/${encodeURIComponent(date)}/${archived ? 'archive' : 'unarchive'}`, { method: 'POST' });
+  emitDataChanged('daily');
+}
+
+export interface JournalEntry { id: string; text: string; mood?: string | number | null; createdAt: string; archived?: boolean; archivedAt?: string }
+
+export async function listJournal(opts: { archived?: boolean } = {}): Promise<JournalEntry[]> {
+  return apiFetch<JournalEntry[]>(opts.archived ? '/api/journal?archived=true' : '/api/journal');
+}
+
+export async function archiveJournalEntry(id: string, archived = true): Promise<JournalEntry> {
+  const r = await apiFetch<JournalEntry>(`/api/journal/${encodeURIComponent(id)}/${archived ? 'archive' : 'unarchive'}`, { method: 'POST' });
+  emitDataChanged('daily');
+  return r;
 }
 
 export async function toggleChecklist(

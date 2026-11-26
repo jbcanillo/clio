@@ -1,3 +1,4 @@
+import { Archive } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AddReminderForm from '../components/features/AddReminderForm';
@@ -11,13 +12,13 @@ import { useToast } from '../components/ui/Toast';
 import { ClioActions } from '../copilot/actions';
 import { useReminders } from '../hooks/useReminders';
 import { apiFetch } from '../lib/api';
-import { completeReminder, listReminders, snoozeReminder } from '../lib/clioApi';
+import { archiveReminder, completeReminder, listReminders, snoozeReminder } from '../lib/clioApi';
 import { useDataVersion } from '../lib/dataEvents';
 import { todayIn } from '../lib/today';
 import type { Reminder } from '../lib/types';
 import { reminderFromApi } from '../utils/store';
 
-type Filter = 'all' | 'due' | 'snoozed';
+type Filter = 'all' | 'due' | 'snoozed' | 'archived';
 
 const CHIPS = [
   { label: 'Remind me to…', prompt: 'Remind me to ' },
@@ -86,6 +87,18 @@ export default function RemindersPage() {
     return () => { live = false; };
   }, [version, retry]);
 
+  // Archived reminders are fetched only when that view is open.
+  const [archived, setArchived] = useState<Reminder[] | null>(null);
+  useEffect(() => {
+    if (filter !== 'archived') return;
+    let live = true;
+    listReminders({ archived: true })
+      .then((rs) => { if (live) setArchived(rs); })
+      .catch(() => { if (live) setArchived([]); });
+    return () => { live = false; };
+  }, [filter, version]);
+  const toggleArchive = async (id: string, next: boolean) => { await archiveReminder(id, next); }; // emits 'reminders'
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
@@ -126,7 +139,7 @@ export default function RemindersPage() {
   }, [location.search, location.pathname, navigate]);
 
   return (
-    <section aria-label="Reminders" className="px-4 py-4">
+    <section aria-label="Reminders" className="px-4 py-4 md:px-6 md:py-6">
       <PageHeader
         title="Reminders"
         subtitle="What's due today and coming up. Complete, snooze or edit a reminder, or ask Clio to set one for you."
@@ -161,7 +174,7 @@ export default function RemindersPage() {
         </div>
       ) : null}
 
-      {reminders !== null && reminders.length === 0 ? (
+      {reminders !== null && reminders.length === 0 && filter !== 'archived' ? (
         <div className="rounded-2xl border border-hairline bg-card p-6 text-center">
           <p className="font-medium text-ink">No reminders yet</p>
           <p className="mt-1 text-sm text-ink-soft">Add one here, or just tell Clio what to remember.</p>
@@ -171,14 +184,60 @@ export default function RemindersPage() {
         </div>
       ) : null}
 
-      {reminders !== null && reminders.length > 0 ? (
-        <>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Chip selected={filter === 'all'} onClick={() => setFilter('all')}>{`All ${view.pendingCount}`}</Chip>
-            <Chip selected={filter === 'due'} onClick={() => setFilter('due')}>{`Due today ${view.dueToday.length}`}</Chip>
-            <Chip selected={filter === 'snoozed'} onClick={() => setFilter('snoozed')}>{`Snoozed ${view.snoozed.length}`}</Chip>
-          </div>
+      {/* Today's progress sits above the reminders list (and its filters). */}
+      {reminders !== null && reminders.length > 0 && filter !== 'archived' ? (
+        <section className="mb-4 rounded-2xl border border-hairline bg-card p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Daily rhythm</h3>
+          {total === 0 ? (
+            <p className="mt-2 text-sm text-ink-soft">No reminders due today</p>
+          ) : (
+            <>
+              <div
+                role="progressbar"
+                aria-label="Daily rhythm"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                className="mt-2 h-2 overflow-hidden rounded-full bg-inset"
+              >
+                <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="mt-2 text-sm text-ink-soft">{`${fulfilled} of ${total} loops fulfilled today`}</p>
+            </>
+          )}
+        </section>
+      ) : null}
 
+      {reminders !== null ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Chip selected={filter === 'all'} onClick={() => setFilter('all')}>{`All ${view.pendingCount}`}</Chip>
+          <Chip selected={filter === 'due'} onClick={() => setFilter('due')}>{`Due today ${view.dueToday.length}`}</Chip>
+          <Chip selected={filter === 'snoozed'} onClick={() => setFilter('snoozed')}>{`Snoozed ${view.snoozed.length}`}</Chip>
+          <Chip selected={filter === 'archived'} onClick={() => setFilter('archived')} icon={<Archive size={12} />}>Archived</Chip>
+        </div>
+      ) : null}
+
+      {filter === 'archived' ? (
+        <section aria-label="Archived reminders">
+          <p className="mb-3 text-xs text-ink-soft">Archived reminders are kept but hidden and never notify you. Unarchive one to bring it back.</p>
+          {archived === null ? (
+            <div aria-busy="true" aria-label="Loading archived reminders" className="h-16 animate-pulse rounded-2xl bg-inset" />
+          ) : archived.length === 0 ? (
+            <p className="text-sm text-ink-soft">Nothing archived.</p>
+          ) : (
+            <ReminderCards
+              reminders={archived}
+              timezone={tz}
+              onComplete={() => undefined}
+              onSnooze={() => undefined}
+              onArchive={toggleArchive}
+            />
+          )}
+        </section>
+      ) : null}
+
+      {reminders !== null && reminders.length > 0 && filter !== 'archived' ? (
+        <>
           <ReminderCards
             grouped
             reminders={view.shown}
@@ -186,6 +245,7 @@ export default function RemindersPage() {
             onComplete={async (id) => { await completeReminder(id); }}
             onSnooze={async (id, until) => { await snoozeReminder(id, until); }}
             onEdit={setEditing}
+            onArchive={toggleArchive}
           />
 
           {view.completedToday.length > 0 ? (
@@ -198,27 +258,6 @@ export default function RemindersPage() {
               </ul>
             </section>
           ) : null}
-
-          <section className="mt-6 rounded-2xl border border-hairline bg-card p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Daily rhythm</h3>
-            {total === 0 ? (
-              <p className="mt-2 text-sm text-ink-soft">No reminders due today</p>
-            ) : (
-              <>
-                <div
-                  role="progressbar"
-                  aria-label="Daily rhythm"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={pct}
-                  className="mt-2 h-2 overflow-hidden rounded-full bg-inset"
-                >
-                  <div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="mt-2 text-sm text-ink-soft">{`${fulfilled} of ${total} loops fulfilled today`}</p>
-              </>
-            )}
-          </section>
         </>
       ) : null}
 

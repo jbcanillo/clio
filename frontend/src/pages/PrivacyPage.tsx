@@ -21,13 +21,15 @@ const List = ({ children }: { children: ReactNode }) => <ul className="list-disc
 /** What Clio stores, what leaves your server and what is (and isn't) protected. Mirrors docs/PRIVACY.md. */
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-4">
+    <div className="mx-auto max-w-2xl space-y-4 py-2 lg:max-w-5xl">
       <PageHeader
         title="Privacy notice"
         subtitle="Clio is a personal, self-hosted app: you run the server and you hold the data. Here is what is stored, where it goes, and what is protected."
         className="mb-2"
       />
 
+      {/* Flowing columns on wide screens, so panels of different heights leave no gaps. */}
+      <div className="gap-4 lg:columns-2 [&>section]:mb-4 [&>section]:break-inside-avoid">
       <Panel title="What is stored, and where" icon={<HardDrive size={18} />}>
         <Rows rows={[
           ['Notes, diary, journal, reminders, profile', 'Markdown files in your vault on your server. Plain text: encrypt the server disk if you need encryption at rest.'],
@@ -72,7 +74,7 @@ export default function PrivacyPage() {
 
       <Panel title="Protecting the AI from your notes" icon={<ShieldCheck size={18} />}>
         <p className="text-sm text-ink-soft">
-          Text from your notes reaches the model marked as data, not instructions, and Clio's AI has no way to delete or overwrite a note: deleting
+          Text from your notes reaches the model marked as data, not instructions, and nothing in Clio can be deleted, by you or the AI. Items are archived instead, and archiving from the chat
           always asks you first. This lowers, but cannot remove, the risk that a strange note steers the AI.
         </p>
       </Panel>
@@ -91,6 +93,8 @@ export default function PrivacyPage() {
           notes and the notification subscription). Delete any backup files you downloaded.
         </p>
       </Panel>
+
+      </div>
 
       <p className="flex items-center gap-2 px-1 text-xs text-ink-muted">
         <Lock aria-hidden="true" size={12} /> This is a plain description of how Clio works, not legal advice.

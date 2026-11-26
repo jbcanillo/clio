@@ -1,12 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Bell, DatabaseBackup, Import, Sparkles } from 'lucide-react';
+import { Bell, Sparkles } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Panel } from '../components/layout/Panel';
 import { apiFetch } from '../lib/api';
 import { failureReason } from '../lib/keyStatus';
-import { ImportLegacy } from '../components/features/ImportLegacy';
 import { ModelPicker } from '../components/features/ModelPicker';
-import { BackupRestore } from '../components/features/BackupRestore';
 import { registerPush } from '../lib/push';
 
 interface Settings {
@@ -20,7 +18,7 @@ type Patch = Partial<Pick<Settings, 'openrouterModel' | 'timezone' | 'checkinTim
 
 const field = 'input input-bordered w-full mt-1';
 
-export default function SettingsPage({ onToast }: { onToast?: (msg: string, type: string) => void } = {}) {
+export default function SettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
   const [loadError, setLoadError] = useState('');
   const [keyInput, setKeyInput] = useState('');
@@ -72,13 +70,13 @@ export default function SettingsPage({ onToast }: { onToast?: (msg: string, type
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 p-4">
-      <PageHeader title="Settings" subtitle="Your AI connection, daily check-ins, backups and imports." className="mb-2" />
+    <div className="mx-auto max-w-lg space-y-4 py-2 lg:max-w-5xl">
+      <PageHeader title="Settings" subtitle="Your AI connection and when Clio nudges you to write. Backups have their own page in the menu." className="mb-2" />
 
       {!s ? (
         <p className="p-4">{loadError || 'Loading…'}</p>
       ) : (
-        <>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <Panel title="AI (OpenRouter)" icon={<Sparkles size={18} />} description="The key and model Clio uses to chat. The key stays on your server.">
             <form onSubmit={saveAi} className="space-y-3">
               <label className="block text-sm">
@@ -121,16 +119,8 @@ export default function SettingsPage({ onToast }: { onToast?: (msg: string, type
               {checkinMessage && <p role="status" className="text-sm">{checkinMessage}</p>}
             </form>
           </Panel>
-        </>
+        </div>
       )}
-
-      <Panel id="backup" title="Backup & restore" icon={<DatabaseBackup size={18} />} description="An encrypted copy of everything in Clio, and a way to bring it back.">
-        <BackupRestore onToast={onToast} />
-      </Panel>
-
-      <Panel title="Import from the old numdum" icon={<Import size={18} />}>
-        <ImportLegacy />
-      </Panel>
     </div>
   );
 }

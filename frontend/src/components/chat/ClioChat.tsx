@@ -181,7 +181,8 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
     }
   };
 
-  const alertCls = 'flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-ink';
+  // Opaque (tint mixed into the card colour): the composer docks over scrolling content.
+  const alertCls = 'flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-[color-mix(in_srgb,var(--error)_12%,var(--card))] px-4 py-3 text-sm text-ink shadow-card';
   let alert: ReactNode = null;
   if (failed) {
     alert = (
@@ -299,8 +300,8 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
   if (mode === 'full') {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{thread}</div>
-        <div className="shrink-0 space-y-2 px-4 pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">{thread}</div>
+        <div className="shrink-0 space-y-2 px-4 pb-4 md:px-6">
           {alert}
           {chipRow}
           {renderComposer(pageInputRef)}
@@ -324,7 +325,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
       <div aria-hidden="true" style={{ height: dockHeight }} />
       <div
         ref={dockRef}
-        className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-3xl space-y-2 px-4 pb-2 pt-2"
+        className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-3xl space-y-2 px-4 pb-2 pt-2 md:bottom-2 md:left-24 lg:left-60"
       >
       {!sheetOpen && visible.length > 0 ? (
         <button

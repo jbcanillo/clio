@@ -164,7 +164,7 @@ function RestoreSection({ onToast, onRestored }: { onToast?: (msg: string, type:
             <legend className="sr-only">How to restore</legend>
             <label className="flex items-start gap-2 text-sm text-ink">
               <input type="radio" name="restore-mode" className="radio radio-sm mt-0.5" checked={replace} onChange={() => setReplace(true)} />
-              <span><strong>Replace</strong>: make Clio match the backup. Items added since the backup are removed (photos are kept).</span>
+              <span><strong>Replace</strong>: make Clio match the backup. Items added since the backup are archived, not deleted, so you can bring them back.</span>
             </label>
             <label className="flex items-start gap-2 text-sm text-ink">
               <input type="radio" name="restore-mode" className="radio radio-sm mt-0.5" checked={!replace} onChange={() => setReplace(false)} />
@@ -188,10 +188,12 @@ function RestoreSection({ onToast, onRestored }: { onToast?: (msg: string, type:
 /** Backup and restore of everything Clio stores, side by side. */
 export function BackupRestore({ onToast, onRestored }: { onToast?: (msg: string, type: string) => void; onRestored?: () => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:grid md:grid-cols-2 md:gap-8 md:space-y-0">
       <BackupSection onToast={onToast} />
-      <div className="border-t border-hairline" />
-      <RestoreSection onToast={onToast} onRestored={onRestored} />
+      <div className="border-t border-hairline md:hidden" />
+      <div className="md:border-l md:border-hairline md:pl-8">
+        <RestoreSection onToast={onToast} onRestored={onRestored} />
+      </div>
     </div>
   );
 }
