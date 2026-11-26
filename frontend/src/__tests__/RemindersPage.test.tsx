@@ -7,10 +7,12 @@ import type { Reminder } from '../lib/types';
 
 const listReminders = vi.fn();
 const archiveReminder = vi.fn();
+const updateReminderApi = vi.fn();
 vi.mock('../lib/clioApi', async (orig) => ({
   ...(await orig<object>()),
   listReminders: (...a: unknown[]) => listReminders(...a),
   archiveReminder: (...a: unknown[]) => archiveReminder(...a),
+  updateReminder: (...a: unknown[]) => updateReminderApi(...a),
   completeReminder: vi.fn(),
   snoozeReminder: vi.fn(),
 }));
@@ -76,6 +78,7 @@ function renderPage() {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'], now: NOW });
   listReminders.mockReset();
+  updateReminderApi.mockReset();
   apiFetch.mockReset();
   updateReminder.mockReset();
   createReminder.mockReset();
@@ -179,9 +182,20 @@ describe('RemindersPage', () => {
     listReminders.mockResolvedValue([done('d1'), done('d2'), done('d3'), mk('u1'), mk('u2'), mk('old', { done: true, completedAt: '2026-06-01T18:00:00.000Z' })]);
     renderPage();
     expect(await screen.findByText('3 of 5 loops fulfilled today')).toBeInTheDocument();
-    expect(screen.getByText(/completed today \(3\)/i)).toBeInTheDocument();
-    expect(screen.queryByText('T-old')).toBeNull();
+    expect(screen.getByText(/completed reminders \(4\)/i)).toBeInTheDocument();
+    expect(screen.getByText('T-old')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '60');
+  });
+
+  it('can return a completed reminder to uncompleted', async () => {
+    listReminders.mockResolvedValue([mk('done', { done: true, completedAt: '2026-06-01T18:00:00.000Z' })]);
+    updateReminderApi.mockResolvedValue({});
+    renderPage();
+    await screen.findByText('T-done');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mark uncompleted' }));
+
+    expect(updateReminderApi).toHaveBeenCalledWith('done', { done: false });
   });
 
   it('falls back to due-today for done reminders without completedAt', async () => {

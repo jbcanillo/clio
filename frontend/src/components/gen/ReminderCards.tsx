@@ -1,5 +1,5 @@
 import { Camera, MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { tomorrowNineAm } from '../../lib/today';
 import type { Person, Place, Reminder } from '../../lib/types';
 import { mapLink, placeLabel } from '../media/PlacePicker';
@@ -13,6 +13,8 @@ interface Props {
   onComplete: (id: string) => Promise<void> | void;
   onSnooze: (id: string, until: string) => Promise<void> | void;
   onEdit?: (r: Reminder) => void;
+  /** Toggles an item in the reminder's checklist. */
+  onChecklist?: (id: string, index: number, checked: boolean) => Promise<void> | void;
   /** Archives a reminder, or restores an archived one. Reminders are never deleted. */
   onArchive?: (id: string, archived: boolean) => Promise<unknown> | void;
   grouped?: boolean;
@@ -47,12 +49,58 @@ function attachmentsOf(r: Reminder) {
   };
 }
 
-function Card({ r, onComplete, onSnooze, onEdit, onArchive, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
+interface ChecklistItem {
+  text: string;
+  done: boolean;
+}
+
+function checklistOf(r: Reminder): ChecklistItem[] {
+  const raw = r.extras?.checklist;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((item) => {
+    if (typeof item === 'string') return item.trim() ? [{ text: item.trim(), done: false }] : [];
+    if (!item || typeof item !== 'object') return [];
+    const value = item as Record<string, unknown>;
+    const text = typeof value.text === 'string'
+      ? value.text
+      : typeof value.title === 'string'
+        ? value.title
+        : typeof value.t === 'string'
+          ? value.t
+          : '';
+    if (!text.trim()) return [];
+    return [{
+      text: text.trim(),
+      done: Boolean(value.done ?? value.completed ?? value.checked),
+    }];
+  });
+}
+
+function Card({ r, onComplete, onSnooze, onEdit, onChecklist, onArchive, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
   const [checked, setChecked] = useState(r.done);
   const [failed, setFailed] = useState(false);
   const [menu, setMenu] = useState(false);
+  const checklist = checklistOf(r);
+  const [checklistOverrides, setChecklistOverrides] = useState<Record<number, boolean>>({});
+  const checklistSignature = JSON.stringify(checklist.map((item) => [item.text, item.done]));
+  useEffect(() => { setChecklistOverrides({}); }, [checklistSignature]);
   const overdue = isOverdue({ ...r, done: checked }, Date.now());
   const att = attachmentsOf(r);
+
+  const toggleChecklist = async (index: number, next: boolean) => {
+    setChecklistOverrides((current) => ({ ...current, [index]: next }));
+    setFailed(false);
+    try {
+      await onChecklist?.(r.id, index, next);
+    } catch {
+      setChecklistOverrides((current) => {
+        const nextOverrides = { ...current };
+        delete nextOverrides[index];
+        return nextOverrides;
+      });
+      setFailed(true);
+    }
+  };
 
   const complete = async (next: boolean) => {
     if (!next) return;
@@ -128,15 +176,33 @@ function Card({ r, onComplete, onSnooze, onEdit, onArchive, timezone }: Omit<Pro
         </div>
         )}
       </div>
+      {checklist.length > 0 ? (
+        <ul className="mt-3 space-y-1.5 border-t border-hairline pt-3">
+          {checklist.map((item, index) => {
+            const done = checklistOverrides[index] ?? item.done;
+            return (
+              <li key={`${item.text}-${index}`} className="flex items-center gap-2.5">
+                <CircleCheck
+                  checked={done}
+                  label={item.text}
+                  disabled={!!r.archived || !onChecklist}
+                  onChange={(next) => toggleChecklist(index, next)}
+                />
+                <span className={`text-sm ${done ? 'text-ink-muted line-through' : 'text-ink'}`}>{item.text}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
       {failed ? <p role="alert" className="mt-2 text-xs text-error">Couldn't update that reminder.</p> : null}
     </li>
   );
 }
 
-export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, onArchive, grouped, timezone }: Props) {
+export function ReminderCards({ reminders, onComplete, onSnooze, onEdit, onChecklist, onArchive, grouped, timezone }: Props) {
   if (reminders.length === 0) return <p className="text-sm text-ink-soft">Nothing coming up.</p>;
   // Keyed by server-driven fields so a refetch (e.g. a repeating reminder advancing, same id) re-syncs card state.
-  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}:${r.archived ? 'a' : ''}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} onArchive={onArchive} timezone={timezone} />;
+  const card = (r: Reminder) => <Card key={`${r.id}:${r.due}:${r.done}:${r.snoozedUntil ?? ''}:${r.archived ? 'a' : ''}:${JSON.stringify(r.extras?.checklist ?? [])}`} r={r} onComplete={onComplete} onSnooze={onSnooze} onEdit={onEdit} onChecklist={onChecklist} onArchive={onArchive} timezone={timezone} />;
   if (!grouped) return <ul className="space-y-2">{reminders.map(card)}</ul>;
   const high = reminders.filter((r) => r.priority === 'high');
   const rest = reminders.filter((r) => r.priority !== 'high');

@@ -12,7 +12,7 @@ import { useToast } from '../components/ui/Toast';
 import { ClioActions } from '../copilot/actions';
 import { useReminders } from '../hooks/useReminders';
 import { apiFetch } from '../lib/api';
-import { archiveReminder, completeReminder, listReminders, snoozeReminder } from '../lib/clioApi';
+import { archiveReminder, completeReminder, listReminders, snoozeReminder, updateReminder as updateReminderApi } from '../lib/clioApi';
 import { useDataVersion } from '../lib/dataEvents';
 import { todayIn } from '../lib/today';
 import type { Reminder } from '../lib/types';
@@ -64,6 +64,7 @@ export default function RemindersPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<Reminder | null>(null);
   const [retry, setRetry] = useState(0);
+  const [reopenError, setReopenError] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -99,21 +100,56 @@ export default function RemindersPage() {
   }, [filter, version]);
   const toggleArchive = async (id: string, next: boolean) => { await archiveReminder(id, next); }; // emits 'reminders'
 
+  const toggleChecklist = async (id: string, index: number, checked: boolean) => {
+    const reminder = reminders?.find((r) => r.id === id);
+    if (!reminder) throw new Error('Reminder not found');
+    const raw = Array.isArray(reminder.extras?.checklist) ? reminder.extras.checklist : [];
+    const normalized = raw.flatMap((item) => {
+      if (typeof item === 'string') {
+        if (!item.trim()) return [];
+        return [{ text: item.trim(), done: false }];
+      }
+      if (!item || typeof item !== 'object') return [];
+      const value = item as Record<string, unknown>;
+      const text = typeof value.text === 'string'
+        ? value.text
+        : typeof value.title === 'string'
+          ? value.title
+          : typeof value.t === 'string'
+            ? value.t
+            : '';
+      if (!text.trim()) return [];
+      return [{
+        text: text.trim(),
+        done: Boolean(value.done ?? value.completed ?? value.checked),
+      }];
+    });
+    const checklist = normalized.map((item, itemIndex) => itemIndex === index ? { ...item, done: checked } : item);
+    await updateReminderApi(id, { extras: { ...reminder.extras, checklist } });
+  };
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!editing || !reminders) return;
+    const latest = reminders.find((r) => r.id === editing.id);
+    if (latest) setEditing(latest);
+  }, [reminders, editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const view = useMemo(() => {
     const all = reminders ?? [];
     const today = todayIn(tz);
     const clock = Date.now();
     const pending = all.filter((r) => !r.done);
+    const completed = all.filter((r) => r.done);
     const dueToday = pending.filter((r) => dayIn(r.due, tz) <= today); // due today or overdue
     const snoozed = pending.filter((r) => r.snoozedUntil && new Date(r.snoozedUntil).getTime() > clock);
     const completedToday = all.filter((r) => r.done && dayIn(r.completedAt ?? r.due, tz) === today);
     const shown = filter === 'due' ? dueToday : filter === 'snoozed' ? snoozed : pending;
-    return { dueToday, snoozed, completedToday, shown, pendingCount: pending.length };
+    return { dueToday, snoozed, completedToday, completed, shown, pendingCount: pending.length };
   }, [reminders, tz, filter, version, now]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fulfilled = view.completedToday.length;
@@ -244,16 +280,34 @@ export default function RemindersPage() {
             timezone={tz}
             onComplete={async (id) => { await completeReminder(id); }}
             onSnooze={async (id, until) => { await snoozeReminder(id, until); }}
+            onChecklist={toggleChecklist}
             onEdit={setEditing}
             onArchive={toggleArchive}
           />
 
-          {view.completedToday.length > 0 ? (
+          {view.completed.length > 0 ? (
             <section className="mt-6">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Completed today ({view.completedToday.length})</h3>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Completed reminders ({view.completed.length})</h3>
+              {reopenError ? <p role="alert" className="mb-2 text-sm text-error">Couldn't reopen that reminder.</p> : null}
               <ul className="space-y-1.5">
-                {view.completedToday.map((r) => (
-                  <li key={r.id} className="rounded-xl bg-inset px-3 py-2 text-sm text-ink-soft line-through">{r.title}</li>
+                {view.completed.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-inset px-3 py-2">
+                    <span className="min-w-0 truncate text-sm text-ink-soft line-through">{r.title}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-full border border-hairline px-3 py-1 text-xs font-semibold text-ink-soft hover:bg-card"
+                      onClick={async () => {
+                        setReopenError(false);
+                        try {
+                          await updateReminderApi(r.id, { done: false });
+                        } catch {
+                          setReopenError(true);
+                        }
+                      }}
+                    >
+                      Mark uncompleted
+                    </button>
+                  </li>
                 ))}
               </ul>
             </section>

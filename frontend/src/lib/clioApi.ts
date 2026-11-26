@@ -44,7 +44,7 @@ export async function snoozeReminder(id: string, until: string): Promise<Reminde
 
 export async function updateReminder(
   id: string,
-  patch: Partial<Pick<Reminder, 'title' | 'due' | 'priority' | 'repeat' | 'notes'>>,
+  patch: Partial<Pick<Reminder, 'title' | 'due' | 'priority' | 'repeat' | 'notes' | 'extras' | 'done'>>,
 ): Promise<Reminder> {
   return writeOrQueue(
     { kind: 'reminder.update', reminderId: id, patch },

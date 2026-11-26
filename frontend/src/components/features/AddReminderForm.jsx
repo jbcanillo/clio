@@ -22,7 +22,7 @@ const AddReminderForm = ({ onDismiss, onSubmit, asPage = false, embedded = false
   const [photos, setPhotos] = useState([]); // PhotoItem[]
   const [places, setPlaces] = useState([]); // at most one
   const [people, setPeople] = useState([]); // at most one
-  const [checklist, setChecklist] = useState([{ id: Date.now(), text: '', completed: false }]);
+  const [checklist, setChecklist] = useState([{ id: `${Date.now()}-0`, text: '', completed: false }]);
 
   const {
     register,
@@ -39,7 +39,7 @@ const AddReminderForm = ({ onDismiss, onSubmit, asPage = false, embedded = false
 
   // Checklist handlers
   const addChecklistItem = () => {
-    setChecklist(prev => [...prev, { id: Date.now(), text: '', completed: false }]);
+    setChecklist(prev => [...prev, { id: `${Date.now()}-${prev.length}`, text: '', completed: false }]);
   };
 
   const removeChecklistItem = (id) => {
@@ -238,7 +238,7 @@ const AddReminderForm = ({ onDismiss, onSubmit, asPage = false, embedded = false
 
       {/* Actions */}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onDismiss} className="btn btn-outline">
+        <button type="button" onClick={onDismiss} className="btn btn-ghost btn-sm">
           Cancel
         </button>
         <button

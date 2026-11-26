@@ -8,6 +8,24 @@ import type { Reminder } from '../../lib/types';
 const base: Reminder = { id: 'r1', title: 'Dentist', due: '2099-12-01T09:00:00.000Z', priority: 'high', repeat: 'weekly', done: false, notes: '' };
 
 describe('ReminderCards interactive', () => {
+  it('shows reminder checklist items and toggles one', async () => {
+    const onChecklist = vi.fn(async () => {});
+    render(
+      <ReminderCards
+        reminders={[{
+          ...base,
+          extras: { checklist: [{ text: 'Bring insurance card', done: false }, { text: 'Arrive early', done: true }] },
+        }]}
+        onComplete={() => {}}
+        onSnooze={() => {}}
+        onChecklist={onChecklist}
+      />,
+    );
+    expect(screen.getByText('Bring insurance card')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Arrive early' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Bring insurance card' }));
+    expect(onChecklist).toHaveBeenCalledWith('r1', 0, true);
+  });
   it('checks optimistically and calls onComplete', async () => {
     const onComplete = vi.fn(() => new Promise<void>(() => {}));
     render(<ReminderCards reminders={[base]} onComplete={onComplete} onSnooze={() => {}} />);
