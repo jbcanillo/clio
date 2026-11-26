@@ -81,4 +81,75 @@ describe('EditReminderForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  test('toggles checklist items independently and submits their individual states', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const reminder = {
+      ...mockReminder,
+      dueDate: tomorrow.toISOString().slice(0, 16),
+      checklist: [
+        { text: 'First item', done: false },
+        { text: 'Second item', done: true },
+      ],
+    };
+    render(<EditReminderForm reminder={reminder} onDismiss={onDismiss} onSubmit={onSubmit} />);
+
+    const first = screen.getByDisplayValue('First item').previousElementSibling;
+    const second = screen.getByDisplayValue('Second item').previousElementSibling;
+    expect(first).not.toBeChecked();
+    expect(second).toBeChecked();
+
+    fireEvent.click(first);
+    fireEvent.click(second);
+
+    expect(first).toBeChecked();
+    expect(second).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /Update Reminder/i }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0].checklist).toEqual([
+      { text: 'First item', done: true },
+      { text: 'Second item', done: false },
+    ]);
+  });
+
+  test('legacy duplicate checklist IDs do not couple checkbox state', () => {
+    const reminder = {
+      ...mockReminder,
+      checklist: [
+        { id: 123, text: 'First item', completed: false },
+        { id: 123, text: 'Second item', completed: false },
+      ],
+    };
+    render(<EditReminderForm reminder={reminder} onDismiss={onDismiss} onSubmit={onSubmit} />);
+
+    const firstCheckbox = screen.getByDisplayValue('First item').previousElementSibling;
+    const secondCheckbox = screen.getByDisplayValue('Second item').previousElementSibling;
+    fireEvent.click(firstCheckbox);
+
+    expect(firstCheckbox).toBeChecked();
+    expect(secondCheckbox).not.toBeChecked();
+  });
+
+  test('re-syncs checklist values when reminder props change', () => {
+    const { rerender } = render(
+      <EditReminderForm
+        reminder={{ ...mockReminder, checklist: [{ text: 'Old item', done: false }] }}
+        onDismiss={onDismiss}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.getByDisplayValue('Old item').previousElementSibling).not.toBeChecked();
+
+    rerender(
+      <EditReminderForm
+        reminder={{ ...mockReminder, checklist: [{ text: 'Old item', done: true }, { text: 'New item', done: false }] }}
+        onDismiss={onDismiss}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.getByDisplayValue('Old item').previousElementSibling).toBeChecked();
+    expect(screen.getByDisplayValue('New item').previousElementSibling).not.toBeChecked();
+  });
 });

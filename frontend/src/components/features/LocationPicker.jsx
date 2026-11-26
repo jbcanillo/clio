@@ -28,21 +28,28 @@ const MapController = ({ target }) => {
 
 const LocationPicker = ({ onConfirm, onCancel }) => {
   const [position, setPosition] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   const handleUseGPS = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      setLocationError('Geolocation is not supported by your browser.');
       return;
     }
+    setLocating(true);
+    setLocationError('');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         const posLL = { lat: latitude, lng: longitude };
         setPosition(posLL);
+        setLocating(false);
       },
       (err) => {
-        alert('Unable to retrieve your location: ' + err.message);
-      }
+        setLocationError(err.message || 'Unable to retrieve your current position.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   };
 
@@ -92,11 +99,15 @@ const LocationPicker = ({ onConfirm, onCancel }) => {
           <button
             type="button"
             onClick={handleUseGPS}
+            disabled={locating}
             className="absolute top-4 right-4 z-[400] bg-base-100 px-3 py-1 rounded-box shadow text-sm hover:bg-base-200 border border-base-300"
           >
-            Use current location
+            {locating ? 'Finding your position…' : 'Use my current position'}
           </button>
         </div>
+        {locationError ? (
+          <p role="alert" className="px-3 py-2 text-sm text-error border-t border-base-300">{locationError}</p>
+        ) : null}
         {position && (
           <div className="p-2 bg-base-200 text-sm border-t border-base-300 text-base-content">
             Lat: {position.lat.toFixed(5)}, Lng: {position.lng.toFixed(5)}

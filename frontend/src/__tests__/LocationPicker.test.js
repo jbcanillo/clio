@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LocationPicker from '../components/features/LocationPicker';
 
 // Mock react-leaflet
@@ -17,9 +17,31 @@ vi.mock('leaflet', () => {
 });
 
 describe('LocationPicker', () => {
-  it('should render without crashing', () => {
+  it('renders the current-position button', () => {
     render(<LocationPicker onConfirm={jest.fn()} onCancel={jest.fn()} />);
     expect(screen.getByTestId('map-container')).toBeInTheDocument();
-    expect(screen.getByText('Use current location')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use my current position' })).toBeInTheDocument();
+  });
+
+  it('pins and displays the browser position', async () => {
+    const getCurrentPosition = vi.fn((success) => success({
+      coords: { latitude: 14.5995, longitude: 120.9842 },
+    }));
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<LocationPicker onConfirm={jest.fn()} onCancel={jest.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Use my current position' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Lat: 14\.59950, Lng: 120\.98420/)).toBeInTheDocument();
+    });
+    expect(getCurrentPosition).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      expect.objectContaining({ enableHighAccuracy: true }),
+    );
   });
 });

@@ -34,6 +34,24 @@ describe('reminders over the API', () => {
     expect(init.json).toMatchObject({ title: 'Dentist', priority: 'low', repeat: 'daily', done: true, snoozedUntil: null, notes: '' });
     expect(saved.completed).toBe(true);
   });
+  it('update preserves edited checklist completion in reminder extras', async () => {
+    apiFetch.mockResolvedValue({
+      ...apiReminder,
+      extras: { checklist: [{ text: 'First item', done: true }, { text: 'Second item', done: false }] },
+    });
+    await remindersDB.updateReminder({
+      id: 'r1',
+      title: 'Dentist',
+      description: 'bring card',
+      dueDate: '2026-12-01T09:00:00.000Z',
+      priority: 'high',
+      repeat: 'never',
+      checklist: [{ text: 'First item', done: true }, { text: 'Second item', done: false }],
+    });
+    expect(apiFetch.mock.calls[0][1].json.extras).toMatchObject({
+      checklist: [{ text: 'First item', done: true }, { text: 'Second item', done: false }],
+    });
+  });
   it('toggleComplete completes an open reminder through the server (repeat logic) and reopens a done one', async () => {
     apiFetch.mockResolvedValueOnce([apiReminder]).mockResolvedValueOnce({ ...apiReminder, done: true });
     expect((await remindersDB.toggleComplete('r1')).completed).toBe(true);

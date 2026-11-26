@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,7 +30,33 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
   const [photos, setPhotos] = useState([]); // PhotoItem[]
   const [places, setPlaces] = useState([]); // at most one
   const [people, setPeople] = useState([]); // at most one
-  const [checklist, setChecklist] = useState(reminder.checklist || [{ id: Date.now(), text: '', completed: false }]);
+  const checklistId = useRef(0);
+  const nextChecklistId = () => `checklist-${checklistId.current++}`;
+  const normalizeChecklist = (items) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return [{ id: nextChecklistId(), text: '', completed: false }];
+    }
+    return items.flatMap((item) => {
+      if (!item || typeof item !== 'object') return [];
+      const text = typeof item.text === 'string'
+        ? item.text
+        : typeof item.title === 'string'
+          ? item.title
+          : typeof item.t === 'string'
+            ? item.t
+            : '';
+      return [{
+          id: nextChecklistId(),
+        text,
+        completed: Boolean(item.completed ?? item.done ?? item.checked),
+      }];
+    });
+  };
+  const [checklist, setChecklist] = useState(() => normalizeChecklist(reminder.checklist));
+
+  useEffect(() => {
+    setChecklist(normalizeChecklist(reminder.checklist));
+  }, [reminder.checklist, reminder.id]);
 
   // Stored attachments: photo file names (older reminders may hold unusable values), one contact, one location.
   useEffect(() => {
@@ -45,7 +71,7 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
 
   // Checklist handlers
   const addChecklistItem = () => {
-    setChecklist(prev => [...prev, { id: Date.now(), text: '', completed: false }]);
+    setChecklist(prev => [...prev, { id: nextChecklistId(), text: '', completed: false }]);
   };
 
   const removeChecklistItem = (id) => {
@@ -90,7 +116,7 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
         photos: await savePhotoItems(photos), // uploads (or queues) the new ones; stores file names
         location: places[0] ?? null,
         contact: people[0] ?? null,
-        checklist: validChecklist
+        checklist: validChecklist.map(({ text, completed }) => ({ text, done: completed }))
       };
       await onSubmit(payload);
     } catch (error) {
@@ -250,11 +276,11 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
         <PlacePicker single value={places} onChange={setPlaces} />
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onDismiss}
-          className="flex-1 btn btn-outline"
+          className="btn btn-ghost btn-sm"
         >
           Cancel
         </button>
