@@ -3,10 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { AuthGate } from './lib/auth';
+import { installReadThrough } from './offline';
 import { applyTheme, getInitialTheme } from './lib/theme';
 import './index.css';
 
 applyTheme(getInitialTheme());
+installReadThrough(); // keep an encrypted copy of what was last loaded, for offline reading
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(

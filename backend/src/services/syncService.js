@@ -53,7 +53,8 @@ export function createSyncService({ vault, dataDir, memory }) {
     }
     if (!current.parseError && current.hash === c.baseHash) {
       try {
-        const { hash } = await vault.write(c.path, { frontmatter: current.frontmatter, body: `${c.body}\n` }, { expectedHash: current.hash });
+        const frontmatter = { ...current.frontmatter, title: c.title, updated: new Date().toISOString() };
+        const { hash } = await vault.write(c.path, { frontmatter, body: `${c.body}\n` }, { expectedHash: current.hash });
         return { status: 'applied', path: c.path, hash };
       } catch (e) {
         if (!(e instanceof ConflictError)) throw e;

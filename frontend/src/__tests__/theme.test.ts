@@ -23,13 +23,14 @@ describe('theme', () => {
     expect(getInitialTheme()).toBe('clio-dark');
   });
 
-  it('falls back to light when no stored value and system is light', () => {
-    expect(getInitialTheme()).toBe('clio-light');
+  it('defaults to the dark brand theme when nothing is stored, even if the system is light', () => {
+    expect(getInitialTheme()).toBe('clio-dark');
   });
 
-  it('falls back to dark when system prefers dark', () => {
+  it('keeps a stored light choice', () => {
     mockMatchMedia(true);
-    expect(getInitialTheme()).toBe('clio-dark');
+    localStorage.setItem('clio.theme', 'clio-light');
+    expect(getInitialTheme()).toBe('clio-light');
   });
 
   it('applyTheme sets attribute, dark class and persists', () => {

@@ -1,19 +1,23 @@
+import { Pencil } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../lib/api';
 import type { NoteSummary } from '../../lib/types';
 import { Chip } from '../ui/Chip';
 import { CircleCheck } from '../ui/CircleCheck';
+import { PhotoStrip } from '../media/PhotoThumb';
 
 interface Props {
   note: NoteSummary;
   onToggle: (index: number, checked: boolean) => Promise<void>;
   onOpen?: () => void;
   onConflict?: () => void;
+  /** Makes the note open for editing. */
+  onEdit?: () => void;
 }
 
 type Msg = null | 'conflict' | 'error';
 
-export function ChecklistNote({ note, onToggle, onOpen, onConflict }: Props) {
+export function ChecklistNote({ note, onToggle, onOpen, onConflict, onEdit }: Props) {
   // Props are the source of truth; overrides are optimistic and dropped when the note prop changes.
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
   const [pending, setPending] = useState<Record<number, boolean>>({});
@@ -67,7 +71,18 @@ export function ChecklistNote({ note, onToggle, onOpen, onConflict }: Props) {
 
   return (
     <div className="rounded-2xl border border-hairline bg-card p-4 space-y-2">
-      <div className="font-semibold text-ink">{note.title}</div>
+      <div className="flex items-start justify-between gap-2">
+        {onEdit ? (
+          <button type="button" onClick={onEdit} className="text-left font-semibold text-ink hover:underline">{note.title}</button>
+        ) : (
+          <div className="font-semibold text-ink">{note.title}</div>
+        )}
+        {onEdit ? (
+          <button type="button" onClick={onEdit} aria-label={`Edit ${note.title}`} className="-mr-1 -mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-inset">
+            <Pencil aria-hidden="true" size={14} />
+          </button>
+        ) : null}
+      </div>
       {note.tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {note.tags.map((t, i) => (
@@ -75,7 +90,14 @@ export function ChecklistNote({ note, onToggle, onOpen, onConflict }: Props) {
           ))}
         </div>
       ) : null}
-      {note.snippet ? <p className="text-sm text-ink-soft">{note.snippet}</p> : null}
+      {note.snippet ? (
+        onEdit ? (
+          <button type="button" onClick={onEdit} className="block w-full text-left text-sm text-ink-soft">{note.snippet}</button>
+        ) : (
+          <p className="text-sm text-ink-soft">{note.snippet}</p>
+        )
+      ) : null}
+      <PhotoStrip files={note.photos} size="sm" />
       {total > 0 ? (
         <>
           <ul className="space-y-1.5">

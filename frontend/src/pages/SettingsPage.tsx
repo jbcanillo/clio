@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { PageHeader } from '../components/layout/PageHeader';
 import { apiFetch } from '../lib/api';
+import { failureReason } from '../lib/keyStatus';
 import { ImportLegacy } from '../components/features/ImportLegacy';
+import { ModelPicker } from '../components/features/ModelPicker';
 import { registerPush } from '../lib/push';
 
 interface Settings {
@@ -38,12 +41,12 @@ export default function SettingsPage() {
 
   async function testKey() {
     const r = await apiFetch<{ ok: boolean; error?: string }>('/api/settings/test-key', { method: 'POST' });
-    setKeyTest(r.ok ? 'Key works.' : `Key test failed: ${r.error}`);
+    setKeyTest(r.ok ? 'Key and model work.' : `${failureReason(r) ?? 'Key test failed.'} (${r.error})`);
   }
 
   return (
     <form onSubmit={save} className="p-4 space-y-4 max-w-lg mx-auto">
-      <h2 className="text-xl font-semibold">Settings</h2>
+      <PageHeader title="Settings" subtitle="Connect your AI key and model, and choose when Clio nudges you to write and in which time zone." className="mb-2" />
 
       <section className="space-y-2">
         <h3 className="font-medium">AI (OpenRouter)</h3>
@@ -53,11 +56,8 @@ export default function SettingsPage() {
                  placeholder={s.openrouterKeySet ? '•••••••• (leave empty to keep)' : 'sk-or-…'} onChange={(e) => setKeyInput(e.target.value)} />
         </label>
         {s.openrouterKeySet && <p className="text-xs opacity-70">Key saved on the server. It is never shown again.</p>}
-        <label className="block text-sm">
-          Model
-          <input className="input input-bordered w-full mt-1" value={s.openrouterModel} onChange={(e) => setS({ ...s, openrouterModel: e.target.value })} />
-        </label>
-        <button type="button" className="btn btn-sm" onClick={testKey}>Test key</button>
+        <ModelPicker value={s.openrouterModel} onChange={(id) => setS({ ...s, openrouterModel: id })} />
+        <button type="button" className="btn btn-sm" onClick={testKey}>Test key and model</button>
         {keyTest && <p className="text-sm">{keyTest}</p>}
       </section>
 

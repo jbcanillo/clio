@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ClioChat } from '../components/chat/ClioChat';
+import { PageHeader } from '../components/layout/PageHeader';
 import { DayStrip, weekStartOf } from '../components/DayStrip';
 import { CheckinForm, type CheckinValues } from '../components/gen/CheckinForm';
 import { DiaryReflection } from '../components/gen/DiaryReflection';
@@ -9,6 +10,7 @@ import { ClioActions, saveCheckin } from '../copilot/actions';
 import { useJournal } from '../hooks/useJournal';
 import { apiFetch } from '../lib/api';
 import { dailyRange } from '../lib/clioApi';
+import { loadDay, updateCheckin } from '../lib/journal';
 import { useDataVersion } from '../lib/dataEvents';
 import { addDays, todayIn } from '../lib/today';
 import type { DaySummary } from '../lib/types';
@@ -48,6 +50,8 @@ export default function DiaryPage() {
   const [retry, setRetry] = useState(0);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [checkinError, setCheckinError] = useState(false);
+  // Editing a logged day: which day, what the form starts from, and the version it was loaded at.
+  const [editing, setEditing] = useState<{ date: string; values?: Partial<CheckinValues>; baseHash: string | null; error?: string } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -104,18 +108,47 @@ export default function DiaryPage() {
     setCheckinOpen(false); // saveCheckin emits 'daily'
   };
 
+  const openEdit = async (date: string) => {
+    setEditing({ date, baseHash: null });
+    try {
+      const { values, baseHash } = await loadDay(date);
+      setEditing((cur) => (cur?.date === date ? { date, values, baseHash } : cur));
+    } catch (e) {
+      const msg = e instanceof TypeError ? "You're offline and this day isn't saved on this device yet." : (e as Error).message || "Couldn't open that day.";
+      setEditing((cur) => (cur?.date === date ? { date, baseHash: null, error: msg } : cur));
+    }
+  };
+  const saveEdit = async (values: CheckinValues) => {
+    if (!editing) return;
+    try {
+      await updateCheckin(editing.date, values, editing.baseHash);
+      setEditing(null);
+    } catch (e) {
+      setEditing((cur) => (cur ? { ...cur, error: (e as Error).message || "Couldn't save your changes." } : cur));
+    }
+  };
+
   const loading = selected === null || (days === null && !error);
   const empty = days !== null && !error && items.length === 0;
   const hasEntries = weekDays.some((d) => d.hasEntry);
 
   return (
-    <section aria-label="Diary" className="px-4 py-4">
-      <header className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-ink">{month}</h2>
-        <button type="button" onClick={openCheckin} className="rounded-full bg-ember px-4 py-2 text-sm font-semibold text-white">
-          Check in
-        </button>
-      </header>
+    <section aria-label="Journal" className="px-4 py-4">
+      <PageHeader
+        title="Journal"
+        subtitle="Check in once a day with your mood and a few words, then look back on your week and Clio's reflections."
+        action={
+          <button
+            type="button"
+            aria-label="Check in"
+            onClick={openCheckin}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-ember text-xl font-bold text-white"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        }
+      />
+      <h3 className="mb-2 font-display text-base font-semibold text-ink-soft">{month}</h3>
 
       {selected ? (
         <DayStrip
@@ -129,7 +162,7 @@ export default function DiaryPage() {
 
       {error ? (
         <div role="alert" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-error/30 bg-error/10 p-3 text-sm text-error">
-          <span>Couldn&apos;t load your diary.</span>
+          <span>Couldn&apos;t load your journal.</span>
           <button type="button" className="rounded-full border border-error/40 px-3 py-1 text-xs font-semibold" onClick={() => setRetry((n) => n + 1)}>
             Retry
           </button>
@@ -137,7 +170,7 @@ export default function DiaryPage() {
       ) : null}
 
       {loading && !error ? (
-        <div aria-busy="true" aria-label="Loading diary" className="mt-4 space-y-2">
+        <div aria-busy="true" aria-label="Loading journal" className="mt-4 space-y-2">
           {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-inset" />)}
         </div>
       ) : null}
@@ -158,7 +191,7 @@ export default function DiaryPage() {
             <ul className="space-y-3">
               {items.map((it) =>
                 it.kind === 'day' ? (
-                  <li key={`d-${it.date}`}><DiaryReflection day={it.day} /></li>
+                  <li key={`d-${it.date}`}><DiaryReflection day={it.day} onEdit={() => void openEdit(it.date)} /></li>
                 ) : (
                   <li key={`j-${it.entry.id}`} className="rounded-2xl border-l-[3px] border-l-ink-muted bg-card p-4 shadow-card">
                     <div className="flex items-center justify-between gap-2">
@@ -177,6 +210,15 @@ export default function DiaryPage() {
       <Sheet open={checkinOpen} onClose={() => setCheckinOpen(false)} title="Daily check-in">
         <CheckinForm onSubmit={submit} onSkip={() => setCheckinOpen(false)} />
         {checkinError ? <p role="alert" className="mt-2 text-sm text-error">Couldn&apos;t save your check-in. Try again.</p> : null}
+      </Sheet>
+
+      <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing ? `Edit ${editing.date}` : 'Edit day'}>
+        {editing?.values ? (
+          <CheckinForm key={editing.date} initial={editing.values} onSubmit={saveEdit} onSkip={() => setEditing(null)} submitLabel="Save changes" skipLabel="Cancel" />
+        ) : editing && !editing.error ? (
+          <div aria-busy="true" aria-label="Loading day" className="h-40 animate-pulse rounded-2xl bg-inset" />
+        ) : null}
+        {editing?.error ? <p role="alert" className="mt-2 text-sm text-error">{editing.error}</p> : null}
       </Sheet>
 
       <ClioActions scope="diary" timezone={tz} />

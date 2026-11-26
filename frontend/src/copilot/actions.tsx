@@ -14,6 +14,7 @@ import { SearchResults } from '../components/gen/SearchResults';
 import { WeeklyReflection } from '../components/gen/WeeklyReflection';
 import { apiFetch } from '../lib/api';
 import { emitDataChanged } from '../lib/dataEvents';
+import { saveCheckin } from '../lib/journal';
 import {
   completeReminder, createReminder, dailyRange, deleteReminder, listNotes, listReminders, snoozeReminder, toggleChecklist, updateReminder,
 } from '../lib/clioApi';
@@ -102,8 +103,8 @@ function LiveDiary({ date, timezone }: { date?: string; timezone: string }) {
     const d = isDateKey(date) ? date : todayIn(timezone);
     dailyRange(d, d).then((days) => setDay(days[0] ?? 'none')).catch(() => setDay('none'));
   }, [date, timezone]);
-  if (day === null) return quiet('Loading the diary…');
-  if (day === 'none') return quiet('No diary entry for that day.');
+  if (day === null) return quiet('Loading the journal…');
+  if (day === 'none') return quiet('No journal entry for that day.');
   return <DiaryReflection day={day} />;
 }
 
@@ -235,17 +236,7 @@ function TaskProposal({ title, tasks, timezone, respond }: { title: string; task
 
 /** Saves a check-in: one request for the mood and one per non-empty text field. */
 /** Emits 'daily' afterwards, even on a partial failure (the mood may already be saved). */
-export async function saveCheckin(date: string, v: CheckinValues): Promise<void> {
-  try {
-    await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { mood: v.mood } });
-    const fields: Array<['events' | 'thoughts' | 'ideas', string]> = [['events', v.events], ['thoughts', v.thoughts], ['ideas', v.ideas]];
-    for (const [section, text] of fields) {
-      if (text.trim()) await apiFetch(`/api/daily/${date}/entries`, { method: 'POST', json: { section, text } });
-    }
-  } finally {
-    emitDataChanged('daily');
-  }
-}
+export { saveCheckin };
 
 type ActionProps = { timezone: string; shareOn: boolean };
 
@@ -355,7 +346,7 @@ function ShowDiary({ timezone }: ActionProps) {
     parameters: [{ name: 'date', type: 'string', description: 'YYYY-MM-DD; omit for today', required: false }],
     handler: async () => 'Showing the diary entry to the owner.',
     render: ({ status, args }) =>
-      status === 'complete' ? <LiveDiary date={typeof args.date === 'string' ? args.date : undefined} timezone={timezone} /> : quiet('Loading the diary…'),
+      status === 'complete' ? <LiveDiary date={typeof args.date === 'string' ? args.date : undefined} timezone={timezone} /> : quiet('Loading the journal…'),
   });
   return null;
 }

@@ -62,31 +62,37 @@
   --shadow-lg: var(--shadow-modal);
   --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --wordmark-end: #146B78;
 }
 
+/* "Cosmos" dark theme, matched to the Clio banner: near-black night sky, glowing teal, ember stars. */
 .dark {
-  --canvas-rgb: 7 43 48;
-  --card-rgb: 14 58 65;
-  --inset-rgb: 19 69 77;
-  --hairline-rgb: 29 85 96;
-  --ink-rgb: 232 241 242;
-  --ink-soft-rgb: 182 203 207;
-  --ink-muted-rgb: 143 169 174;
+  --canvas-rgb: 8 22 27;
+  --card-rgb: 14 34 41;
+  --inset-rgb: 19 44 52;
+  --hairline-rgb: 31 60 69;
+  --ink-rgb: 230 240 241;
+  --ink-soft-rgb: 169 192 197;
+  --ink-muted-rgb: 127 154 160;
   --teal-rgb: 63 166 180;
   --on-teal-rgb: 7 43 48;
-  --canvas: #072B30;
-  --card: #0E3A41;
-  --inset: #13454D;
-  --hairline: #1D5560;
-  --ink: #E8F1F2;
-  --ink-soft: #B6CBCF;
-  --ink-muted: #8FA9AE;
+  --canvas: #08161B;
+  --card: #0E2229;
+  --inset: #132C34;
+  --hairline: #1F3C45;
+  --ink: #E6F0F1;
+  --ink-soft: #A9C0C5;
+  --ink-muted: #7F9AA0;
   --primary: #3FA6B4;
   --primary-hover: #85BBC6;
   --primary-light: rgba(63, 166, 180, 0.2);
   --border-focus: #3FA6B4;
-  --glass-bg: rgba(14, 58, 65, 0.85);
+  --glass-bg: rgba(10, 26, 32, 0.72);
+  --shadow-card: 0 0 0 1px rgba(63, 166, 180, 0.06), 0 10px 30px -8px rgba(0, 0, 0, 0.5);
+  --shadow-ai: 0 0 0 1px rgba(255, 107, 53, 0.10), 0 12px 36px -8px rgba(255, 107, 53, 0.22);
+  --shadow-modal: 0 20px 50px -10px rgba(0, 0, 0, 0.7);
+  --wordmark-end: #3FA6B4;
 }
 
 html, body, #root {
@@ -95,6 +101,12 @@ html, body, #root {
 
 body {
   background-color: var(--canvas);
+  /* Banner glow: teal halo up top, faint ember and teal nebulae on the sides. The starfield is <CosmicBackdrop />. */
+  background-image:
+    radial-gradient(ellipse 70% 40% at 50% -5%, rgba(20, 107, 120, 0.14), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 0% 75%, rgba(255, 107, 53, 0.06), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 100% 35%, rgba(63, 166, 180, 0.08), transparent 70%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -106,8 +118,57 @@ h1, h2, h3, h4, h5, h6, .font-display {
   font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
 }
 
+.dark body {
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -5%, rgba(20, 107, 120, 0.45), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 0% 75%, rgba(255, 107, 53, 0.12), transparent 70%),
+    radial-gradient(ellipse 30% 30% at 12% 60%, rgba(63, 166, 180, 0.10), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 100% 35%, rgba(255, 107, 53, 0.10), transparent 70%),
+    radial-gradient(ellipse 30% 30% at 88% 25%, rgba(63, 166, 180, 0.12), transparent 70%);
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+/* Brand: the banner's wide wordmark, ember fading into teal */
+.brand-wordmark {
+  font-family: 'Unbounded', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, var(--ember) 0%, var(--ember-light) 35%, var(--wordmark-end) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Brand: the banner's spaced-out caps tagline */
+.eyebrow {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* The round portrait with a thin ember ring and teal glow */
+.brand-medallion {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px rgba(255, 107, 53, 0.7), 0 0 18px rgba(63, 166, 180, 0.35);
+}
+
+/* Glow for the active nav item and primary accents in the dark theme */
+.dark .glow-teal { filter: drop-shadow(0 0 6px rgba(63, 166, 180, 0.55)); }
+.dark .glow-ember { filter: drop-shadow(0 0 6px rgba(255, 107, 53, 0.6)); }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+.star-twinkle { animation: twinkle 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .star-twinkle { animation: none; }
 }
 
 *:focus-visible {
@@ -138,21 +199,76 @@ html {
   border-radius: var(--radius-xl);
 }
 
-/* Buttons */
+/* Sizing for daisyUI controls. In the components layer so per-element utilities (h-12, rounded-full…) still win. */
+@layer components {
+/* Buttons: comfortable tap targets (44px+), modest corners from --rounded-btn */
 .btn {
+  min-height: 3rem;
+  height: 3rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  font-size: 0.9375rem;
   font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
   font-weight: 600;
   transition: background-color 0.2s var(--ease-out), transform 0.15s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
+.btn-sm {
+  min-height: 2.75rem;
+  height: 2.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.875rem;
+}
+.btn-xs {
+  min-height: 2.25rem;
+  height: 2.25rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.8125rem;
+}
+.btn-circle.btn-sm, .btn-square.btn-sm { width: 2.75rem; padding: 0; }
+.btn-circle.btn-xs, .btn-square.btn-xs { width: 2.25rem; padding: 0; }
+/* Plain and outline buttons are the secondary style: soft fill + hairline in both themes
+   (daisy's defaults are white in light mode and vanish/flash white in dark). :where keeps specificity at .btn,
+   so colour variants and utilities (bg-ember…) still win. */
+.btn:where(:not(.btn-primary, .btn-secondary, .btn-accent, .btn-ghost, .btn-link, .btn-neutral, .btn-info, .btn-success, .btn-warning, .btn-error)) {
+  background-color: var(--inset);
+  border-color: var(--hairline);
+  color: var(--ink);
+  box-shadow: none;
+}
+.btn:where(:not(.btn-primary, .btn-secondary, .btn-accent, .btn-ghost, .btn-link, .btn-neutral, .btn-info, .btn-success, .btn-warning, .btn-error)):hover {
+  background-color: var(--card);
+  border-color: var(--primary);
+  color: var(--ink);
+}
 .btn:active { transform: scale(0.98); }
 .btn-primary:active { background-color: var(--teal-dark); }
 
-/* Inputs */
+/* Inputs: roomy padding, 16px text (also stops iOS zoom-on-focus), modest corners */
 .input, .textarea, .select {
   background: var(--inset);
   border: 1px solid var(--hairline);
   color: var(--ink);
+  font-size: 1rem;
+  border-radius: 0.75rem;
   transition: border-color 0.2s, background-color 0.2s;
+}
+.input, .select, .input-sm, .select-sm {
+  min-height: 3rem;
+  height: 3rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 1rem;
+}
+.select { padding-right: 2.5rem; }
+.textarea, .textarea-sm {
+  min-height: 6rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+label > .input, label > .textarea, label > .select { margin-top: 0.375rem; }
 }
 .input:focus, .textarea:focus, .select:focus {
   background: var(--card);

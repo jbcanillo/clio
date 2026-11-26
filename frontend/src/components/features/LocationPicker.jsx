@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Portal } from '../ui/Portal';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,6 +56,7 @@ const LocationPicker = ({ onConfirm, onCancel }) => {
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-[var(--bg-elevated)] rounded-box overflow-hidden max-w-4xl w-full h-[80vh] flex flex-col shadow-lg">
         <div className="p-4 border-b border-base-200 flex justify-between items-center bg-base-100">
@@ -102,6 +104,7 @@ const LocationPicker = ({ onConfirm, onCancel }) => {
         )}
       </div>
     </div>
+    </Portal>
   );
 };
 

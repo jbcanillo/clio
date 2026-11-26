@@ -30,9 +30,15 @@ vi.mock('../copilot/actions', async (orig) => ({
   },
 }));
 const updateReminder = vi.fn();
+const createReminder = vi.fn();
 const addToast = vi.fn();
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ addToast }) }));
-vi.mock('../hooks/useReminders', () => ({ useReminders: () => ({ updateReminder }) }));
+vi.mock('../hooks/useReminders', () => ({ useReminders: () => ({ createReminder, updateReminder }) }));
+vi.mock('../components/features/AddReminderForm', () => ({
+  default: ({ onSubmit, onDismiss }: { onSubmit: (d: unknown) => Promise<void>; onDismiss: () => void }) => (
+    <button onClick={async () => { await onSubmit({ title: 'New' }); onDismiss(); }}>create-reminder</button>
+  ),
+}));
 vi.mock('../components/features/EditReminderFormModal', () => ({
   default: ({ reminder, onSubmit, onDismiss, onToast }: { reminder: { id: string; dueDate: string }; onSubmit: (d: unknown) => Promise<void>; onDismiss: () => void; onToast: (m: string, t: string) => void }) => (
     <div role="dialog">
@@ -60,7 +66,6 @@ function renderPage() {
     <MemoryRouter initialEntries={['/reminders']}>
       <Routes>
         <Route path="/reminders" element={<RemindersPage />} />
-        <Route path="/reminders/new" element={<div>new-reminder-page</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -71,6 +76,7 @@ beforeEach(() => {
   listReminders.mockReset();
   apiFetch.mockReset();
   updateReminder.mockReset();
+  createReminder.mockReset();
   addToast.mockReset();
   chatProps = null;
   actionProps = null;
@@ -79,12 +85,11 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('RemindersPage', () => {
-  it('shows header, eyebrow, synced pill and the chat config', async () => {
+  it('shows header, synced pill and the chat config', async () => {
     listReminders.mockResolvedValue([mk('a')]);
     renderPage();
     expect(await screen.findByText('T-a')).toBeInTheDocument();
-    expect(screen.getByText(/proactive flow/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: "Today's Horizons" })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reminders' })).toBeInTheDocument();
     expect(screen.getByText(/^Synced/)).toBeInTheDocument();
     expect(chatProps?.scope).toBe('reminders');
     expect(chatProps?.mode).toBe('sheet');
@@ -98,15 +103,29 @@ describe('RemindersPage', () => {
     renderPage();
     expect(await screen.findByText(/no reminders yet/i)).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole('button', { name: 'Add reminder' }).slice(-1)[0]);
-    expect(screen.getByText('new-reminder-page')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'New reminder' })).toBeInTheDocument();
   });
 
-  it('plus button navigates to /reminders/new', async () => {
+  it('plus button opens the new reminder sheet and closes it after saving', async () => {
     listReminders.mockResolvedValue([mk('a')]);
+    createReminder.mockResolvedValue(undefined);
     renderPage();
     await screen.findByText('T-a');
     await userEvent.click(screen.getByRole('button', { name: 'Add reminder' }));
-    expect(screen.getByText('new-reminder-page')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'New reminder' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'create-reminder' }));
+    expect(createReminder).toHaveBeenCalledWith({ title: 'New' });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New reminder' })).toBeNull());
+  });
+
+  it('?new=1 opens the new reminder sheet', async () => {
+    listReminders.mockResolvedValue([]);
+    render(
+      <MemoryRouter initialEntries={['/reminders?new=1']}>
+        <Routes><Route path="/reminders" element={<RemindersPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('dialog', { name: 'New reminder' })).toBeInTheDocument();
   });
 
   it('High priority group lists only high not-done reminders', async () => {

@@ -2,7 +2,9 @@ import express from 'express';
 import { z } from 'zod';
 import { wrap, parse } from '../http.js';
 
-const create = z.object({
+export const reminderId = z.string().regex(/^[a-z0-9]{8,40}$/);
+export const create = z.object({
+  id: reminderId.optional(),
   title: z.string().trim().min(1).max(300),
   due: z.string().datetime({ offset: true }),
   priority: z.enum(['low', 'medium', 'high']).optional(),
@@ -10,7 +12,7 @@ const create = z.object({
   notes: z.string().max(10000).optional(),
   extras: z.record(z.unknown()).optional(),
 }).strict();
-const patch = z.object({
+export const patch = z.object({
   title: z.string().trim().min(1).max(300).optional(),
   due: z.string().datetime({ offset: true }).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
@@ -25,7 +27,7 @@ const query = z.object({
   to: z.string().datetime({ offset: true }).optional(),
   done: z.enum(['true', 'false']).optional(),
 });
-const snooze = z.object({ until: z.string().datetime({ offset: true }) }).strict();
+export const snooze = z.object({ until: z.string().datetime({ offset: true }) }).strict();
 
 export function reminderRouter({ reminders, memory }) {
   const r = express.Router();

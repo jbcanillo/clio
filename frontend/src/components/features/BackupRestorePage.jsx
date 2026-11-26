@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PageHeader } from '../layout/PageHeader';
 import remindersDB from '../../utils/store';
 import { createJournalEntry, deleteAllJournalEntries } from '../../utils/store';
 import { downloadBackup, restoreFromFile } from '../../utils/backupRestore';
@@ -118,8 +119,7 @@ const BackupRestorePage = ({ mode = 'backup', onBack, onToast }) => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{title}</h1>
-      <p className="text-sm text-[var(--text-tertiary)] mb-6">{description}</p>
+      <PageHeader title={title} subtitle={description} className="mb-6" />
 
       {confirmRestore ? (
         <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] p-6 space-y-4">

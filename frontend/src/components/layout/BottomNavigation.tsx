@@ -3,7 +3,7 @@ import type { Scope } from '../../lib/types';
 
 const TABS: { id: Scope; label: string; Icon: LucideIcon }[] = [
   { id: 'chat', label: 'Chat', Icon: Sparkles },
-  { id: 'diary', label: 'Diary', Icon: BookOpen },
+  { id: 'diary', label: 'Journal', Icon: BookOpen },
   { id: 'reminders', label: 'Reminders', Icon: AlarmClock },
   { id: 'notes', label: 'Notes', Icon: StickyNote },
 ];
@@ -32,7 +32,7 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
               active ? 'bg-teal/10 text-[var(--primary)]' : 'text-ink-muted hover:text-ink'
             }`}
           >
-            <Icon size={22} strokeWidth={active ? 2.5 : 2} aria-hidden />
+            <Icon size={22} strokeWidth={active ? 2.5 : 2} className={active ? 'glow-teal' : undefined} aria-hidden />
             <span>{label}</span>
           </button>
         );

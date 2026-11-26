@@ -39,6 +39,39 @@ describe('settings', () => {
     expect(res.body).toEqual({ ok: false, error: 'openrouter_401' });
     expect(calls[0].auth).toBe('Bearer sk-or-1');
   });
+  it('lists only tool-capable models, free first, and caches the catalog', async () => {
+    let fetches = 0;
+    const data = [
+      { id: 'paid/b', name: 'B Paid', supported_parameters: ['tools'], pricing: { prompt: '0.000001', completion: '0.000002' }, context_length: 128000 },
+      { id: 'free/a:free', name: 'A Free', supported_parameters: ['tools'], pricing: { prompt: '0', completion: '0' }, context_length: 1000000 },
+      { id: 'perplexity/pplx-decider-v1.3:free', name: 'Decider', supported_parameters: [], pricing: { prompt: '0', completion: '0' } },
+    ];
+    const fetchFn = async () => { fetches += 1; return { ok: true, status: 200, json: async () => ({ data }) }; };
+    const { as } = await makeApi({ fetchFn });
+    const res = await as('get', '/api/settings/models');
+    expect(res.status).toBe(200);
+    expect(res.body.models).toEqual([
+      { id: 'free/a:free', name: 'A Free', free: true, context: 1000000 },
+      { id: 'paid/b', name: 'B Paid', free: false, context: 128000 },
+    ]);
+    await as('get', '/api/settings/models');
+    expect(fetches).toBe(1);
+  });
+  it('test-key also checks that the configured model exists and supports tools', async () => {
+    const models = [
+      { id: 'good/chat', supported_parameters: ['tools', 'temperature'] },
+      { id: 'perplexity/pplx-decider-v1.3:free', supported_parameters: [] },
+    ];
+    const fetchFn = async (url) =>
+      url.endsWith('/models') ? { ok: true, status: 200, json: async () => ({ data: models }) } : { ok: true, status: 200 };
+    const { as } = await makeApi({ fetchFn });
+    await as('put', '/api/settings').send({ openrouterKey: 'sk-or-1', openrouterModel: 'good/chat' });
+    expect((await as('post', '/api/settings/test-key')).body).toEqual({ ok: true, model: 'good/chat' });
+    await as('put', '/api/settings').send({ openrouterModel: 'perplexity/pplx-decider-v1.3:free' });
+    expect((await as('post', '/api/settings/test-key')).body).toEqual({ ok: false, error: 'model_no_tools', model: 'perplexity/pplx-decider-v1.3:free' });
+    await as('put', '/api/settings').send({ openrouterModel: 'no/such-model' });
+    expect((await as('post', '/api/settings/test-key')).body).toEqual({ ok: false, error: 'model_not_found', model: 'no/such-model' });
+  });
 });
 
 describe('daily notes', () => {
@@ -60,8 +93,8 @@ describe('daily notes', () => {
     const res = await as('get', '/api/daily?from=2026-11-22&to=2026-11-23');
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
-      { date: '2026-11-22', mood: null, energy: null, headline: 'hi', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 0 } },
-      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } },
+      { date: '2026-11-22', mood: null, energy: null, headline: 'hi', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 0 }, photos: [], people: [], places: [] },
+      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 }, photos: [], people: [], places: [] },
     ]);
     expect((await as('get', '/api/daily?from=bad&to=2026-11-23')).status).toBe(400);
     expect((await as('get', '/api/daily?from=2026-11-23&to=2026-11-22')).status).toBe(400);

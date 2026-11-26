@@ -160,14 +160,14 @@ describe('saveCheckin', () => {
     const onChange = (e: Event) => kinds.push((e as CustomEvent).detail);
     window.addEventListener('clio:data-changed', onChange);
     try {
-      await saveCheckin('2026-11-23', { mood: 4, events: 'walk', thoughts: ' ', ideas: '' });
+      await saveCheckin('2026-11-23', { mood: 4, events: 'walk', thoughts: ' ', ideas: '', photos: [], people: [], places: [] });
       expect(apiFetch.mock.calls.map(([p, i]) => [p, i.json])).toEqual([
         ['/api/daily/2026-11-23/entries', { mood: 4 }],
         ['/api/daily/2026-11-23/entries', { section: 'events', text: 'walk' }],
       ]);
       expect(kinds).toEqual(['daily']);
       apiFetch.mockImplementationOnce(async () => ({})).mockImplementationOnce(async () => { throw new Error('down'); });
-      await expect(saveCheckin('2026-11-23', { mood: 3, events: 'x', thoughts: '', ideas: '' })).rejects.toThrow('down');
+      await expect(saveCheckin('2026-11-23', { mood: 3, events: 'x', thoughts: '', ideas: '', photos: [], people: [], places: [] })).rejects.toThrow('down');
       expect(kinds).toEqual(['daily', 'daily']);
     } finally {
       window.removeEventListener('clio:data-changed', onChange);

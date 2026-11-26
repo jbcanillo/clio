@@ -2,6 +2,7 @@ export type Theme = 'clio-light' | 'clio-dark';
 
 const KEY = 'clio.theme';
 
+// Dark ("cosmos", matching the banner) is the brand default; light is opt-in from the avatar menu.
 export function getInitialTheme(): Theme {
   try {
     const stored = localStorage.getItem(KEY);
@@ -9,11 +10,7 @@ export function getInitialTheme(): Theme {
   } catch {
     /* storage unavailable */
   }
-  const dark =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return dark ? 'clio-dark' : 'clio-light';
+  return 'clio-dark';
 }
 
 export function applyTheme(t: Theme): void {

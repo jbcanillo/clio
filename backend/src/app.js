@@ -4,16 +4,21 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { registerRoutes } from './routes.js';
 
-const DEFAULT_LIMITS = { api: 300, copilot: 10, login: 5 }; // requests per minute per IP
+// Requests per minute per IP. `copilot` counts only agent runs (the calls that reach the model);
+// CopilotKit's setup calls (info, connect) are frequent and fall under the general `api` limit.
+const DEFAULT_LIMITS = { api: 300, copilot: 20, login: 5 };
 
-const limiter = (max) =>
+const limiter = (max, skip) =>
   rateLimit({
     windowMs: 60_000,
     limit: max,
     standardHeaders: true,
     legacyHeaders: false,
+    ...(skip ? { skip } : {}),
     handler: (_req, res) => res.status(429).json({ error: 'rate_limited' }),
   });
+
+const isAgentRun = (req) => req.body?.method === 'agent/run';
 
 /** JSON body parsing with a size cap that depends on the route. */
 function bodyParser() {
@@ -22,6 +27,8 @@ function bodyParser() {
   const bulk = express.json({ limit: '5mb' });
   return (req, res, next) => {
     if (req.path.startsWith('/api/import')) return bulk(req, res, next);
+    // Photos travel as base64 JSON, directly or inside an offline sync batch.
+    if (req.path.startsWith('/api/attachments') || req.path.startsWith('/api/sync/ops')) return bulk(req, res, next);
     if (req.path.startsWith('/api/copilotkit')) return copilot(req, res, next);
     return small(req, res, next);
   };
@@ -46,9 +53,10 @@ export function createApp(deps = {}) {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
   app.use('/api/auth/login', limiter(limits.login));
-  app.use('/api/copilotkit', limiter(limits.copilot));
   app.use('/api', limiter(limits.api));
   app.use(bodyParser());
+  // After body parsing, so the limiter can tell agent runs from setup calls.
+  app.use('/api/copilotkit', limiter(limits.copilot, (req) => !isAgentRun(req)));
 
   if (deps.auth) registerRoutes(app, deps);
 

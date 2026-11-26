@@ -121,7 +121,7 @@ describe('ClioChat messages', () => {
     expect(screen.getByText(/<b>x<\/b>/)).toBeInTheDocument();
     expect(container.querySelector('b')).toBeNull();
     expect(screen.getByText('hello')).toBeInTheDocument();
-    expect(screen.getByText(/AI Synthesized/)).toBeInTheDocument();
+    expect(screen.getByText('Clio', { selector: 'span' })).toBeInTheDocument();
   });
 
   it('renders generative UI inline and skips tool messages', () => {

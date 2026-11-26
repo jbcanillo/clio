@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ChatPage from '../pages/ChatPage';
-import { saveNote } from '../offline';
 import { todayIn } from '../lib/today';
 
 const sendMessage = vi.fn();
@@ -16,14 +15,13 @@ vi.mock('../components/chat/ClioChat', () => ({
 }));
 vi.mock('@copilotkit/react-core', async (orig) => ({ ...(await orig<object>()), useCopilotChatInternal: () => ({ sendMessage }) }));
 vi.mock('../copilot/actions', async (orig) => ({ ...(await orig<object>()), ClioActions: () => null }));
-vi.mock('../offline', () => ({ outbox: { flush: async () => ({ sent: 0, conflicts: [], failed: 0, locked: false }), pending: async () => 0 }, saveNote: vi.fn() }));
+vi.mock('../offline', () => ({ outbox: { flush: async () => ({ sent: 0, conflicts: [], failed: 0, locked: false }), pending: async () => 0 } }));
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (...a: unknown[]) => apiFetch(...a) }));
 
 beforeEach(() => {
   apiFetch.mockReset();
   sendMessage.mockReset();
-  vi.mocked(saveNote).mockReset();
   chatProps = null;
   apiFetch.mockImplementation(async (path: string) => {
     if (path === '/api/settings') return { timezone: 'UTC', openrouterKeySet: true, openrouterModel: 'm', checkinTimes: { morning: '09:00', evening: '20:30' } };
@@ -124,27 +122,5 @@ describe('ChatPage shell', () => {
     await userEvent.click(screen.getByRole('button', { name: /save check-in/i }));
     await waitFor(() => expect(entryCalls()).toHaveLength(1));
     expect(entryCalls()[0][0]).toContain(`/api/daily/${todayIn('UTC')}/entries`);
-  });
-  it('opens quick note in a sheet and closes it after a successful save', async () => {
-    vi.mocked(saveNote).mockResolvedValue(undefined as never);
-    renderPage();
-    await userEvent.click(await screen.findByRole('button', { name: '+ Note' }));
-    const dialog = screen.getByRole('dialog', { name: 'Quick note' });
-    expect(dialog).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText('Title'), 't');
-    await userEvent.type(screen.getByLabelText('Note'), 'b');
-    await userEvent.click(screen.getByRole('button', { name: /save note/i }));
-    await waitFor(() => expect(saveNote).toHaveBeenCalledWith({ title: 't', body: 'b' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  });
-  it('keeps the sheet open when saving fails', async () => {
-    vi.mocked(saveNote).mockRejectedValue(new Error('x'));
-    renderPage();
-    await userEvent.click(await screen.findByRole('button', { name: '+ Note' }));
-    await userEvent.type(screen.getByLabelText('Title'), 't');
-    await userEvent.type(screen.getByLabelText('Note'), 'b');
-    await userEvent.click(screen.getByRole('button', { name: /save note/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't save/i);
-    expect(screen.getByRole('dialog', { name: 'Quick note' })).toBeInTheDocument();
   });
 });

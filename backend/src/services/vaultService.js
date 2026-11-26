@@ -124,5 +124,33 @@ export function createVaultService({ vaultDir }) {
     return candidate;
   }
 
-  return { read, write, list, remove, uniquePath };
+  /** Raw bytes of any vault file (attachments), or null. */
+  async function readFile(relPath) {
+    const abs = resolve(relPath);
+    try {
+      return await fs.promises.readFile(abs);
+    } catch (e) {
+      if (e.code === 'ENOENT' || e.code === 'EISDIR') return null;
+      throw e;
+    }
+  }
+
+  /** Writes a binary file once; an existing file is left untouched (created: false). */
+  async function writeFileOnce(relPath, buf) {
+    const abs = resolve(relPath);
+    if (fs.existsSync(abs)) return { created: false };
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    resolve(relPath); // re-check after mkdir: a symlinked parent must not slip through
+    const tmp = `${abs}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    try {
+      await fs.promises.writeFile(tmp, buf);
+      await fs.promises.rename(tmp, abs);
+    } catch (e) {
+      await fs.promises.rm(tmp, { force: true });
+      throw e;
+    }
+    return { created: true };
+  }
+
+  return { read, write, list, remove, uniquePath, readFile, writeFileOnce };
 }

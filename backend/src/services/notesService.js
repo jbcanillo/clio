@@ -2,6 +2,7 @@ import { ValidationError } from '../errors.js';
 import { ConflictError } from './vaultService.js';
 const NOTES_DIR = 'Clio/Notes';
 const CHECK = /^\s*- \[( |x|X)\] (.*)$/;
+const PHOTO = /^\s*!\[[^\]]*\]\(\.\.\/Attachments\/([a-z0-9]{8,40}\.(?:jpg|png|webp|gif))\)\s*$/;
 const NOTE_PATH_ERR = `path must be a markdown file directly inside ${NOTES_DIR}/`;
 // Exactly Clio/Notes/<name>.md: no nested folders, no backslashes (Windows separators), no dot-segments.
 const NOTE_PATH = /^Clio\/Notes\/(?!\.\.?\.md$)[^/\\\u0000]+\.md$/;
@@ -15,8 +16,14 @@ const iso = (v) => {
 function summarize(note) {
   const fm = note.frontmatter ?? {};
   const checklist = [];
+  const photos = [];
   let snippet = '';
   for (const line of note.body.split(/\r?\n/)) {
+    const photo = PHOTO.exec(line);
+    if (photo) {
+      photos.push(photo[1]);
+      continue;
+    }
     const m = CHECK.exec(line);
     if (m) {
       checklist.push({ index: checklist.length, text: m[2].trim(), done: m[1] !== ' ' });
@@ -33,6 +40,7 @@ function summarize(note) {
     updated: iso(fm.updated) || iso(fm.created),
     hash: note.hash,
     checklist,
+    photos,
   };
 }
 

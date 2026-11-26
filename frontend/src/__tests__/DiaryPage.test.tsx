@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DiaryPage from '../pages/DiaryPage';
 import type { DaySummary } from '../lib/types';
@@ -7,6 +7,13 @@ const dailyRange = vi.fn();
 vi.mock('../lib/clioApi', async (orig) => ({ ...(await orig<object>()), dailyRange: (...a: unknown[]) => dailyRange(...a) }));
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (...a: unknown[]) => apiFetch(...a) }));
+const loadDay = vi.fn();
+const updateCheckin = vi.fn();
+vi.mock('../lib/journal', async (orig) => ({
+  ...(await orig<object>()),
+  loadDay: (...a: unknown[]) => loadDay(...a),
+  updateCheckin: (...a: unknown[]) => updateCheckin(...a),
+}));
 let journal: unknown[] = [];
 vi.mock('../hooks/useJournal', () => ({ useJournal: () => ({ entries: journal }) }));
 let chatProps: { scope: string; mode: string; placeholder: string; chips: { label: string }[] } | null = null;
@@ -35,6 +42,8 @@ beforeEach(() => {
     throw new Error('unexpected ' + p);
   });
   saveCheckin.mockReset().mockResolvedValue(undefined);
+  loadDay.mockReset();
+  updateCheckin.mockReset().mockResolvedValue(undefined);
   journal = [];
   chatProps = null;
   actionProps = null;
@@ -120,5 +129,32 @@ describe('DiaryPage', () => {
     await act(async () => { await userEvent.click(screen.getByRole('button', { name: 'Retry' })); });
     expect(await screen.findByText('H-2026-11-20')).toBeInTheDocument();
     expect(alert).not.toBeInTheDocument();
+  });
+
+  it('tapping a logged day opens it for editing and saves the changes', async () => {
+    dailyRange.mockResolvedValue([day('2026-11-20')]);
+    loadDay.mockResolvedValue({ baseHash: 'h1', values: { mood: 3, events: 'Old event', thoughts: '', ideas: '', photos: [], people: [], places: [] } });
+    render(<DiaryPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit 2026-11-20' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit 2026-11-20' });
+    expect(loadDay).toHaveBeenCalledWith('2026-11-20');
+    const events = await within(dialog).findByLabelText(/what happened/i);
+    expect(events).toHaveValue('Old event');
+    await userEvent.clear(events);
+    await userEvent.type(events, 'New event');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateCheckin).toHaveBeenCalledWith('2026-11-20', expect.objectContaining({ mood: 3, events: 'New event' }), 'h1'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('an edit that fails keeps the form open with the reason', async () => {
+    dailyRange.mockResolvedValue([day('2026-11-20')]);
+    loadDay.mockResolvedValue({ baseHash: 'h1', values: { mood: 3, events: '', thoughts: '', ideas: '', photos: [], people: [], places: [] } });
+    updateCheckin.mockRejectedValue(new Error('This day changed somewhere else.'));
+    render(<DiaryPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit 2026-11-20' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('changed somewhere else');
+    expect(screen.getByRole('dialog', { name: 'Edit 2026-11-20' })).toBeInTheDocument();
   });
 });

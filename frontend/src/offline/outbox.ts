@@ -23,6 +23,8 @@ export interface FlushResult {
   conflicts: ConflictInfo[];
   failed: number;
   locked: boolean;
+  /** Offline reminder/check-in changes the server refused for good (e.g. the reminder was deleted). */
+  rejected?: number;
 }
 export interface KeyValueStore {
   get(key: string): Promise<string | undefined>;
@@ -52,6 +54,19 @@ export function createOutbox({ store, getKey, fetchFn = (u, i) => fetch(u, i) }:
 
   async function pending(): Promise<number> {
     return (await store.keys()).filter((k) => k.startsWith(PREFIX)).length;
+  }
+
+  /** Decrypted queued notes; [] when locked. Unreadable entries are skipped. */
+  async function list(): Promise<NoteChange[]> {
+    const key = await getKey();
+    if (!key) return [];
+    const out: NoteChange[] = [];
+    for (const k of (await store.keys()).filter((x) => x.startsWith(PREFIX))) {
+      try {
+        out.push(JSON.parse(await open(key, (await store.get(k)) as string)));
+      } catch { /* sealed with another key */ }
+    }
+    return out;
   }
 
   async function run(): Promise<FlushResult> {
@@ -111,5 +126,10 @@ export function createOutbox({ store, getKey, fetchFn = (u, i) => fetch(u, i) }:
     return flushing;
   }
 
-  return { enqueue, pending, flush };
+  /** Drops a queued change (it is being replaced by a newer edit of the same note). */
+  async function remove(id: string): Promise<void> {
+    await store.delete(PREFIX + id);
+  }
+
+  return { enqueue, pending, list, remove, flush };
 }

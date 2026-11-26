@@ -62,6 +62,7 @@ function TypingIndicator() {
 function UserBubble({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-end gap-1">
+      <span className="inline-flex items-center rounded-full bg-inset px-2.5 py-1 text-xs font-semibold text-ink-soft">Me</span>
       <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-3xl rounded-tr-md bg-teal px-4 py-3 text-sm leading-relaxed text-on-teal shadow-card">
         {text}
       </div>

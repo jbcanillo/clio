@@ -2,12 +2,23 @@ import request from 'supertest';
 import { makeApi } from './helpers/api.js';
 
 describe('rate limits', () => {
-  it('limits /api/copilotkit to 10 requests per minute', async () => {
+  it('limits /api/copilotkit agent runs to 20 per minute', async () => {
     const { as } = await makeApi();
-    for (let i = 0; i < 10; i++) expect((await as('post', '/api/copilotkit').send({})).status).not.toBe(429);
-    const res = await as('post', '/api/copilotkit').send({});
+    const run = { method: 'agent/run', params: { agentId: 'default' } };
+    for (let i = 0; i < 20; i++) expect((await as('post', '/api/copilotkit').send(run)).status).not.toBe(429);
+    const res = await as('post', '/api/copilotkit').send(run);
     expect(res.status).toBe(429);
     expect(res.body).toEqual({ error: 'rate_limited' });
+  });
+  it('does not count copilot setup requests (info, connect) against the run limit', async () => {
+    const { as } = await makeApi({ rateLimits: { copilot: 2 } });
+    for (let i = 0; i < 8; i++) {
+      expect((await as('post', '/api/copilotkit').send({ method: 'info' })).status).not.toBe(429);
+      expect((await as('post', '/api/copilotkit').send({ method: 'agent/connect' })).status).not.toBe(429);
+    }
+    const run = { method: 'agent/run', params: { agentId: 'default' } };
+    for (let i = 0; i < 2; i++) expect((await as('post', '/api/copilotkit').send(run)).status).not.toBe(429);
+    expect((await as('post', '/api/copilotkit').send(run)).status).toBe(429);
   });
   it('limits login attempts to 5 per minute, even with the right password', async () => {
     const { app } = await makeApi();

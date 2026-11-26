@@ -9,6 +9,8 @@ import { analyticsRouter } from './controllers/analyticsController.js';
 import { sessionRouter } from './controllers/sessionController.js';
 import { pushRouter } from './controllers/pushController.js';
 import { syncRouter } from './controllers/syncController.js';
+import { opsSyncRouter } from './controllers/opsSyncController.js';
+import { attachmentRouter } from './controllers/attachmentController.js';
 import { journalRouter } from './controllers/journalController.js';
 import { notesRouter } from './controllers/notesController.js';
 import { importRouter } from './controllers/importController.js';
@@ -22,6 +24,8 @@ export function registerRoutes(app, deps) {
   api.use(requireAuth(deps.auth));
   if (deps.shareSession) api.use(sessionRouter(deps));
   if (deps.sync) api.use(syncRouter(deps));
+  if (deps.opsSync) api.use(opsSyncRouter(deps));
+  if (deps.attachments) api.use(attachmentRouter(deps));
   if (deps.push && deps.scheduler && deps.config) api.use(pushRouter(deps));
   if (deps.settings) api.use(settingsRouter(deps));
   if (deps.daily) api.use(dailyRouter(deps));

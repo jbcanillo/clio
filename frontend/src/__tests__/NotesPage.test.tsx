@@ -16,7 +16,13 @@ vi.mock('../lib/clioApi', async (orig) => ({
 const apiFetch = vi.fn();
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<object>()), apiFetch: (...a: unknown[]) => apiFetch(...a) }));
 const saveNote = vi.fn();
-vi.mock('../offline', () => ({ saveNote: (...a: unknown[]) => saveNote(...a) }));
+const editNote = vi.fn();
+const queuedNote = vi.fn();
+vi.mock('../offline', () => ({
+  saveNote: (...a: unknown[]) => saveNote(...a),
+  editNote: (...a: unknown[]) => editNote(...a),
+  queuedNote: (...a: unknown[]) => queuedNote(...a),
+}));
 let chatProps: { scope: string; mode: string; placeholder: string; chips: { label: string }[]; pendingPrompt?: { id: string; text: string } } | null = null;
 vi.mock('../components/chat/ClioChat', () => ({
   ClioChat: (p: NonNullable<typeof chatProps>) => { chatProps = p; return <div data-testid="chat" />; },
@@ -43,6 +49,8 @@ beforeEach(() => {
   listNotes.mockReset().mockResolvedValue([A, B, C]);
   toggleChecklist.mockReset().mockResolvedValue({ hash: 'h1' });
   saveNote.mockReset().mockResolvedValue(undefined);
+  editNote.mockReset().mockResolvedValue(undefined);
+  queuedNote.mockReset();
   apiFetch.mockReset().mockImplementation(async (p: string) => {
     if (p === '/api/settings') return { timezone: 'America/Los_Angeles' };
     if (p === '/api/session/share') return { on: true };
@@ -207,5 +215,36 @@ describe('NotesPage', () => {
     renderPage();
     await screen.findByText('Groceries');
     await waitFor(() => expect(actionProps).toMatchObject({ scope: 'notes', shareOn: false, timezone: 'UTC' }));
+  });
+
+  it('tapping a note opens it for editing, keeps its photos, and saves through the outbox', async () => {
+    apiFetch.mockImplementation(async (p: string) => {
+      if (p === '/api/settings') return { timezone: 'UTC' };
+      if (p === '/api/session/share') return { on: false };
+      if (p.startsWith('/api/notes/read')) return { path: 'Clio/Notes/b.md', title: 'Work plan', body: 'Quarterly goals\n\n![photo](../Attachments/abcdefgh12.jpg)\n', hash: 'hb2' };
+      if (p.startsWith('/api/attachments/')) return new Promise(() => {});
+      throw new Error('unexpected ' + p);
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Work plan' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit note' });
+    expect(apiFetch).toHaveBeenCalledWith('/api/notes/read?path=Clio%2FNotes%2Fb.md');
+    const body = await within(dialog).findByLabelText('Note');
+    expect(body).toHaveValue('Quarterly goals');
+    await userEvent.type(body, ' for Q3');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(editNote).toHaveBeenCalledWith({
+      path: 'Clio/Notes/b.md', baseHash: 'hb2', title: 'Work plan', body: 'Quarterly goals for Q3\n\n![photo](../Attachments/abcdefgh12.jpg)',
+    }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('a note still waiting to sync is edited from the queue', async () => {
+    listNotes.mockResolvedValue([note({ path: 'pending:q1', title: 'Offline idea', snippet: 'draft' })]);
+    queuedNote.mockResolvedValue({ title: 'Offline idea', body: 'draft text', hash: '' });
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Offline idea' }));
+    expect(await screen.findByLabelText('Note')).toHaveValue('draft text');
+    expect(queuedNote).toHaveBeenCalledWith('pending:q1');
   });
 });

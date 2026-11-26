@@ -12,7 +12,7 @@ export function ConfirmCard({ title, detail, onApprove, onCancel }: Props) {
       {detail && <div className="text-sm text-ink-soft">{detail}</div>}
       <div className="flex gap-2 justify-end">
         <button className="btn btn-ghost btn-sm text-[var(--primary)]" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-sm h-12 min-h-12 rounded-full border-0 bg-teal px-6 text-on-teal hover:opacity-90" onClick={onApprove}>Approve</button>
+        <button className="btn h-12 min-h-12 rounded-xl border-0 bg-teal px-6 text-on-teal hover:opacity-90" onClick={onApprove}>Approve</button>
       </div>
     </div>
   );

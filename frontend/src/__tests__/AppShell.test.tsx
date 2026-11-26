@@ -50,16 +50,16 @@ describe('App shell', () => {
 
   it('navigates to Diary via the nav', async () => {
     renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Diary' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Journal' }));
     expect(window.location.hash).toBe('#/diary');
-    expect(screen.getByRole('button', { name: 'Diary' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Journal' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByTestId('scope-diary').parentElement).not.toHaveAttribute('hidden');
     expect(screen.getByTestId('scope-chat').parentElement).toHaveAttribute('hidden');
   });
 
   it('avatar menu lists Settings/Backup/Restore and Settings navigates', async () => {
     renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
     const items = screen.getAllByRole('menuitem').map((i) => i.textContent);
     expect(items).toEqual(expect.arrayContaining(['Settings', 'Backup', 'Restore']));
     await userEvent.click(screen.getByRole('menuitem', { name: /settings/i }));
@@ -69,20 +69,33 @@ describe('App shell', () => {
     expect(screen.getByLabelText('Settings page')).toBeInTheDocument();
   });
 
+  it('Lock comes first in the menu and clears the session token', async () => {
+    sessionStorage.setItem('clio.token', 't');
+    const onAuth = vi.fn();
+    window.addEventListener('clio-auth', onAuth);
+    renderApp('#/chat');
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(screen.getAllByRole('menuitem')[0]).toHaveTextContent('Lock');
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Lock' }));
+    expect(sessionStorage.getItem('clio.token')).toBeNull();
+    expect(onAuth).toHaveBeenCalled();
+    window.removeEventListener('clio-auth', onAuth);
+  });
+
   it('theme toggle applies clio-dark', async () => {
-    localStorage.removeItem('clio.theme');
+    localStorage.setItem('clio.theme', 'clio-light'); // dark is the default; start from a stored light choice
     document.documentElement.dataset.theme = 'clio-light';
     renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
     await userEvent.click(screen.getByRole('menuitem', { name: /dark mode/i }));
     expect(document.documentElement.dataset.theme).toBe('clio-dark');
-    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
     expect(screen.getByRole('menuitem', { name: /light mode/i })).toBeInTheDocument();
   });
 
   it('Escape closes the menu', async () => {
     renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).toBeNull();
@@ -90,7 +103,7 @@ describe('App shell', () => {
 
   it('keeps every scope mounted once across tab switches', async () => {
     renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Diary' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Journal' }));
     await userEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect([...mounts].sort()).toEqual(['chat', 'diary', 'notes', 'reminders']);
   });
@@ -101,15 +114,9 @@ describe('App shell', () => {
     expect(window.location.hash).toBe('#/chat');
   });
 
-  it('search button goes to notes search', async () => {
-    renderApp('#/chat');
-    await userEvent.click(screen.getByRole('button', { name: 'Search notes' }));
-    expect(window.location.hash).toBe('#/notes?focus=search');
-  });
-
   it('Escape returns focus to the account button', async () => {
     renderApp('#/chat');
-    const trigger = screen.getByRole('button', { name: 'Account menu' });
+    const trigger = screen.getByRole('button', { name: 'Menu' });
     await userEvent.click(trigger);
     await userEvent.keyboard('{Escape}');
     expect(trigger).toHaveFocus();

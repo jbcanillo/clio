@@ -79,8 +79,8 @@ describe('dailyService', () => {
     await daily.append('2026-11-22', { section: 'events', text: 'Lunch' });
     await daily.append('2026-11-22', { section: 'thoughts', text: 'Felt calm' });
     expect(await daily.rangeSummaries('2026-11-22', '2026-11-23')).toEqual([
-      { date: '2026-11-22', mood: 4, energy: null, headline: 'Dentist at 9', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 2 } },
-      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } },
+      { date: '2026-11-22', mood: 4, energy: null, headline: 'Dentist at 9', hasEntry: true, sections: { thoughts: 1, ideas: 0, events: 2 }, photos: [], people: [], places: [] },
+      { date: '2026-11-23', mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 }, photos: [], people: [], places: [] },
     ]);
   });
   it('rangeSummaries truncates the headline to 120 chars', async () => {
@@ -92,7 +92,7 @@ describe('dailyService', () => {
     h.writeRaw(`Clio/Daily/${D}.md`, '---\n: bad: [yaml\n---\n## Thoughts\n- mine\n');
     await daily.append('2026-11-24', { mood: 2 });
     const out = await daily.rangeSummaries(D, '2026-11-24');
-    expect(out[0]).toEqual({ date: D, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 } });
+    expect(out[0]).toEqual({ date: D, mood: null, energy: null, headline: '', hasEntry: false, sections: { thoughts: 0, ideas: 0, events: 0 }, photos: [], people: [], places: [] });
     expect(out[1]).toMatchObject({ date: '2026-11-24', mood: 2, hasEntry: true });
   });
   it('rangeSummaries rejects 367 days and reversed ranges', async () => {

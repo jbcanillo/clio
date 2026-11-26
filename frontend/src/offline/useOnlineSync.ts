@@ -10,6 +10,7 @@ interface OutboxLike {
 export function useOnlineSync(outbox: OutboxLike) {
   const [pending, setPending] = useState(0);
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+  const [rejected, setRejected] = useState(0);
   const alive = useRef(true);
 
   const flush = useCallback(async () => {
@@ -17,6 +18,7 @@ export function useOnlineSync(outbox: OutboxLike) {
     const p = await outbox.pending().catch(() => 0);
     if (!alive.current) return;
     setPending(p);
+    if (r?.rejected) setRejected((n) => n + (r.rejected ?? 0));
     if (r?.conflicts.length) setConflicts((cur) => [...cur, ...r.conflicts.filter((c) => !cur.some((x) => x.id === c.id))]);
   }, [outbox]);
 
@@ -24,8 +26,15 @@ export function useOnlineSync(outbox: OutboxLike) {
     alive.current = true;
     void flush();
     const onOnline = () => void flush();
+    const onAuth = () => void flush(); // unlocking (or signing in again) makes a locked queue sendable
+    const onConflicts = (e: Event) => {
+      const found = (e as CustomEvent<ConflictInfo[]>).detail ?? [];
+      if (alive.current) setConflicts((cur) => [...cur, ...found.filter((c) => !cur.some((x) => x.id === c.id))]);
+    };
+    window.addEventListener('clio:note-conflicts', onConflicts);
     const onSw = (e: Event) => { if ((e as MessageEvent).data?.type === 'FLUSH_OUTBOX') void flush(); };
     window.addEventListener('online', onOnline);
+    window.addEventListener('clio-auth', onAuth);
     window.addEventListener('clio-sw-message', onSw);
     const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined;
     const relay = (e: MessageEvent) => window.dispatchEvent(new MessageEvent('clio-sw-message', { data: e.data }));
@@ -33,11 +42,13 @@ export function useOnlineSync(outbox: OutboxLike) {
     return () => {
       alive.current = false;
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('clio-auth', onAuth);
+      window.removeEventListener('clio:note-conflicts', onConflicts);
       window.removeEventListener('clio-sw-message', onSw);
       sw?.removeEventListener?.('message', relay);
     };
   }, [flush]);
 
   const resolved = useCallback((id: string) => setConflicts((cur) => cur.filter((c) => c.id !== id)), []);
-  return { pending, conflicts, flushNow: flush, resolved };
+  return { pending, conflicts, rejected, flushNow: flush, resolved };
 }

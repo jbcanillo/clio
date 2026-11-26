@@ -90,11 +90,11 @@ describe('show_diary', () => {
     mount();
     api.dailyRange.mockResolvedValueOnce([]);
     const { unmount } = view({ date: '2026-11-22' });
-    expect(await screen.findByText(/no diary entry/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no journal entry/i)).toBeInTheDocument();
     unmount();
     api.dailyRange.mockRejectedValueOnce(new Error('x'));
     view({ date: '2026-11-22' });
-    expect(await screen.findByText(/no diary entry/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no journal entry/i)).toBeInTheDocument();
   });
 });
 

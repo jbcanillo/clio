@@ -1,7 +1,8 @@
-import { Plus, Sparkles } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ClioChat } from '../components/chat/ClioChat';
+import { PageHeader } from '../components/layout/PageHeader';
 import { ChecklistNote } from '../components/gen/ChecklistNote';
 import { QuickNote } from '../components/QuickNote';
 import { Chip } from '../components/ui/Chip';
@@ -11,7 +12,8 @@ import { apiFetch } from '../lib/api';
 import { listNotes, toggleChecklist } from '../lib/clioApi';
 import { useDataVersion } from '../lib/dataEvents';
 import type { NoteSummary } from '../lib/types';
-import { saveNote } from '../offline';
+import { editNote, queuedNote, saveNote } from '../offline';
+import { photoFromLine } from '../lib/media';
 
 const CHIPS = [
   { label: 'Summarize my notes', prompt: 'Summarize my recent notes.' },
@@ -43,6 +45,7 @@ export default function NotesPage() {
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [editing, setEditing] = useState<{ note: NoteSummary; loaded?: { title: string; text: string; photos: string[]; hash: string }; error?: string } | null>(null);
   const [tz, setTz] = useState('UTC');
   const [share, setShare] = useState(false);
   const [ask, setAsk] = useState<{ id: string; text: string } | undefined>(undefined);
@@ -109,11 +112,47 @@ export default function NotesPage() {
     setNewOpen(false); // saveNote / the outbox flush emit 'notes' once it reaches the server
   };
 
+  const openEdit = async (note: NoteSummary) => {
+    setEditing({ note });
+    try {
+      // A note that has not synced yet is edited where it waits, in the offline queue.
+      const r = note.path.startsWith('pending:')
+        ? await queuedNote(note.path)
+        : await apiFetch<{ title: string | null; body: string; hash: string }>(`/api/notes/read?path=${encodeURIComponent(note.path)}`);
+      const lines = r.body.replace(/\s+$/, '').split(/\r?\n/);
+      const photos = lines.map(photoFromLine).filter((f): f is string => Boolean(f));
+      const text = lines.filter((l) => !photoFromLine(l)).join('\n').trim();
+      setEditing((cur) => (cur?.note.path === note.path ? { note, loaded: { title: r.title ?? note.title, text, photos, hash: r.hash } } : cur));
+    } catch (e) {
+      const msg = e instanceof TypeError ? "You're offline and this note isn't saved on this device yet." : "Couldn't open that note.";
+      setEditing((cur) => (cur?.note.path === note.path ? { note, error: msg } : cur));
+    }
+  };
+  const saveEdit = async (n: { title: string; body: string }) => {
+    if (!editing?.loaded) return;
+    await editNote({ path: editing.note.path, baseHash: editing.loaded.hash, title: n.title, body: n.body }); // throws: QuickNote shows it
+    setEditing(null);
+  };
+
   const loading = notes === null && !error;
   const empty = notes !== null && notes.length === 0;
 
   return (
     <section aria-label="Notes" className="px-4 py-4">
+      <PageHeader
+        title="Notes"
+        subtitle="Your thoughts, ideas and checklists in one place. Search them, filter by tag, or ask Clio about them."
+        action={
+          <button
+            type="button"
+            aria-label="New note"
+            onClick={() => setNewOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-ember text-xl font-bold text-white"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        }
+      />
       <div className="flex items-center gap-2 rounded-full border border-hairline bg-card py-1 pl-4 pr-1 shadow-card">
         <label htmlFor="notes-search" className="sr-only">Search notes</label>
         <input
@@ -132,7 +171,7 @@ export default function NotesPage() {
           onClick={doAsk}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ember text-white"
         >
-          <Sparkles aria-hidden="true" size={16} />
+          <Search aria-hidden="true" size={16} />
         </button>
       </div>
 
@@ -174,23 +213,22 @@ export default function NotesPage() {
         <ul className="mt-4 space-y-3">
           {visible.map((n) => (
             <li key={n.path}>
-              <ChecklistNote note={n} onToggle={(i, c) => toggle(n, i, c)} onConflict={refetch} />
+              <ChecklistNote note={n} onToggle={(i, c) => toggle(n, i, c)} onConflict={refetch} onEdit={() => void openEdit(n)} />
             </li>
           ))}
         </ul>
       ) : null}
 
-      <button
-        type="button"
-        aria-label="New note"
-        onClick={() => setNewOpen(true)}
-        className="fixed bottom-24 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-ember px-4 py-3 text-sm font-semibold text-white shadow-card"
-      >
-        <Plus aria-hidden="true" size={18} />
-        New note
-      </button>
       <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="New note">
         <QuickNote onSave={submitNote} />
+      </Sheet>
+      <Sheet open={editing !== null} onClose={() => setEditing(null)} title="Edit note">
+        {editing?.loaded ? (
+          <QuickNote key={editing.note.path} initial={editing.loaded} onSave={saveEdit} submitLabel="Save changes" onCancel={() => setEditing(null)} />
+        ) : editing && !editing.error ? (
+          <div aria-busy="true" aria-label="Loading note" className="h-40 animate-pulse rounded-2xl bg-inset" />
+        ) : null}
+        {editing?.error ? <p role="alert" className="mt-2 text-sm text-error">{editing.error}</p> : null}
       </Sheet>
 
       <div className="mt-6">

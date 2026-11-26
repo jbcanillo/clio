@@ -1,10 +1,10 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import AddReminderForm from './components/features/AddReminderForm';
 import BackupRestorePage from './components/features/BackupRestorePage';
 import NotificationManager from './components/features/NotificationManager';
 import AppHeader, { type HeaderStatus } from './components/layout/AppHeader';
+import CosmicBackdrop from './components/layout/CosmicBackdrop';
 import BottomNavigation from './components/layout/BottomNavigation';
 import InstallModal from './components/ui/InstallModal';
 import { ToastProvider, useToast } from './components/ui/Toast';
@@ -49,8 +49,12 @@ function AppContent() {
   const toast = useToast() as { addToast: (msg: string, type?: string) => void };
   // Refetches on every 'reminders' data change, so the alarm and notification effects below run on fresh data.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { reminders, loading, createReminder } = useReminders() as any;
-  const { pending } = useOnlineSync(outbox);
+  const { reminders, loading } = useReminders() as any;
+  const { pending, rejected } = useOnlineSync(outbox);
+  useEffect(() => {
+    if (rejected > 0) toast.addToast("Some offline changes couldn't be applied (the reminder was changed or removed elsewhere).", 'error');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rejected]);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
 
   useEffect(() => {
@@ -155,16 +159,16 @@ function AppContent() {
   };
 
   return (
-    <div className="app-container flex h-[100dvh] flex-col bg-canvas text-ink">
+    <div className="app-container relative flex h-[100dvh] flex-col text-ink">
+      <CosmicBackdrop />
       <AppHeader
         status={status}
-        onSearch={() => navigate('/notes?focus=search')}
         onEnableNotifications={enableNotifications}
         onInstall={deferInstall ? install : null}
       />
       {showInstallModal && <InstallModal onInstall={install} onDismiss={() => setShowInstallModal(false)} />}
 
-      <main className={`min-h-0 flex-1 ${activeScope === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} ${activeScope ? 'pb-20' : ''}`}>
+      <main className={`relative z-10 min-h-0 flex-1 ${activeScope === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'} ${activeScope ? 'pb-20' : ''}`}>
         {SCOPES.map((scope) => (
           <div key={scope} hidden={activeScope !== scope} className={scope === 'chat' ? 'h-full min-h-0' : undefined}>
             <ScopedCopilot scope={scope}>{PAGES[scope]}</ScopedCopilot>
@@ -195,22 +199,7 @@ function AppContent() {
               </BackBar>
             }
           />
-          <Route
-            path="/reminders/new"
-            element={
-              <BackBar onBack={goBack('/reminders')}>
-                <AddReminderForm
-                  asPage
-                  onDismiss={goBack('/reminders')}
-                  onToast={toast.addToast}
-                  onSubmit={async (data: unknown) => {
-                    await createReminder(data); // the store emits 'reminders': every tab and the alarm sync refetch
-                    goBack('/reminders')();
-                  }}
-                />
-              </BackBar>
-            }
-          />
+          <Route path="/reminders/new" element={<Navigate to="/reminders?new=1" replace />} />
           <Route path="*" element={<Navigate to="/chat" replace />} />
         </Routes>
       </main>

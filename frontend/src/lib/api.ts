@@ -32,13 +32,48 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit & { 
     headers['Content-Type'] = 'application/json';
     rest.body = JSON.stringify(json);
   }
-  const res = await fetch(path, { ...rest, headers });
+  const cacheable = readThrough !== null && (!rest.method || rest.method.toUpperCase() === 'GET') && path.startsWith('/api/') && !path.startsWith('/api/copilotkit');
+  const fromCache = async (err: unknown): Promise<T> => {
+    const hit = cacheable ? await readThrough!.offline(path).catch(() => undefined) : undefined;
+    if (hit) return hit.data as T;
+    throw err;
+  };
+
+  if (cacheable && typeof navigator !== 'undefined' && navigator.onLine === false) return fromCache(new TypeError('offline'));
+  let res: Response;
+  try {
+    res = await fetch(path, { ...rest, headers });
+  } catch (e) {
+    return fromCache(e); // no connection: serve the last copy we saw, if any
+  }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
-  const data = text ? JSON.parse(text) : undefined;
-  if (!res.ok) {
-    if (res.status === 401 && path !== '/api/auth/login') clearToken();
-    throw new ApiError(res.status, data?.error || 'error', data?.message);
+  let data: { error?: string; message?: string } | undefined;
+  try {
+    data = text ? JSON.parse(text) : undefined;
+  } catch {
+    data = undefined; // e.g. a proxy's HTML error page
   }
-  return data as T;
+  if (!res.ok) {
+    if (res.status === 401 && path !== '/api/auth/login') {
+      clearToken();
+      window.dispatchEvent(new Event('clio-auth-expired'));
+    }
+    const err = new ApiError(res.status, data?.error || 'error', data?.message);
+    if (res.status === 502 || res.status === 503 || res.status === 504) return fromCache(err);
+    throw err;
+  }
+  return (cacheable ? await readThrough!.fresh(path, data) : data) as T;
+}
+
+/** Offline read support, installed by the offline module (kept out of here to avoid an import cycle). */
+export interface ReadThrough {
+  /** Called with every successful GET; stores a copy and returns the data to hand back. */
+  fresh(path: string, data: unknown): Promise<unknown>;
+  /** Called when the server can't be reached; the last stored copy, or undefined. */
+  offline(path: string): Promise<{ data: unknown } | undefined>;
+}
+let readThrough: ReadThrough | null = null;
+export function setReadThrough(r: ReadThrough | null): void {
+  readThrough = r;
 }

@@ -2,14 +2,13 @@ import { useCopilotChatInternal } from '@copilotkit/react-core';
 import { useEffect, useState } from 'react';
 import { ClioChat, type ClioChatChip } from '../components/chat/ClioChat';
 import { ConflictList } from '../components/ConflictList';
+import { PageHeader } from '../components/layout/PageHeader';
 import { CheckinForm, type CheckinValues } from '../components/gen/CheckinForm';
-import { QuickNote } from '../components/QuickNote';
-import { Sheet } from '../components/ui/Sheet';
 import { ClioActions, saveCheckin } from '../copilot/actions';
 import { apiFetch } from '../lib/api';
 import { todayIn } from '../lib/today';
 import { newUuid } from '../lib/uuid';
-import { outbox, saveNote } from '../offline';
+import { outbox } from '../offline';
 import { useOnlineSync } from '../offline/useOnlineSync';
 
 const CHIPS: ClioChatChip[] = [
@@ -37,7 +36,6 @@ export default function ChatPage() {
   const [timezone, setTimezone] = useState<string | null>(null);
   const [checkin, setCheckin] = useState(() => new URLSearchParams(window.location.search).get('checkin') === '1');
   const [error, setError] = useState('');
-  const [showNote, setShowNote] = useState(false);
   const { sendMessage } = useCopilotChatInternal();
   const { pending, conflicts, resolved } = useOnlineSync(outbox);
 
@@ -78,10 +76,16 @@ export default function ChatPage() {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col">
+    <section aria-label="Chat" className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 px-4 pt-4">
+        <PageHeader
+          className="mb-1"
+          title="Chat with Clio"
+          subtitle="Talk about your day, think out loud, or ask Clio to remember things for you."
+        />
+      </div>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pt-2">
         <div className="flex items-center gap-2">
-          <button type="button" className="btn btn-xs" onClick={() => setShowNote(true)}>+ Note</button>
           {pending > 0 && <span className="badge badge-sm">{pending} waiting to sync</span>}
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
@@ -96,14 +100,6 @@ export default function ChatPage() {
         </label>
       </div>
       {shareError && <p role="alert" className="shrink-0 px-4 text-sm text-error">{shareError}</p>}
-      <Sheet open={showNote} onClose={() => setShowNote(false)} title="Quick note">
-        <QuickNote
-          onSave={async (n) => {
-            await saveNote(n);
-            setShowNote(false);
-          }}
-        />
-      </Sheet>
       <div className="shrink-0">
         <ConflictList conflicts={conflicts} onResolved={resolved} />
       </div>

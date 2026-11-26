@@ -84,7 +84,11 @@ export function createReminderService({ vault, now = () => new Date() }) {
     checkFields(input);
     const priority = input.priority ?? 'medium';
     const repeat = input.repeat ?? 'never';
-    const id = Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
+    // A client-chosen id lets an offline create be retried without making a second reminder.
+    if (input.id !== undefined && (typeof input.id !== 'string' || !ID_RE.test(input.id) || input.id.length < 8 || input.id.length > 40)) {
+      throw new ValidationError('id must be 8-40 lowercase letters or digits');
+    }
+    const id = input.id ?? Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
     // done / completedAt / createdAt are only honoured when set programmatically (the legacy import).
     const created = input.createdAt && !Number.isNaN(new Date(input.createdAt).getTime()) ? new Date(input.createdAt) : now();
     const frontmatter = { id, title: input.title.trim(), due: due.toISOString(), priority, repeat, done: Boolean(input.done), created: created.toISOString() };

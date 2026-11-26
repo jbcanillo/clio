@@ -3,6 +3,7 @@
 // layer (utils/db.js) so the existing hooks and components work unchanged.
 import { apiFetch } from '../lib/api';
 import { emitDataChanged } from '../lib/dataEvents';
+import { newReminderId, writeOrQueue } from '../offline/instances';
 
 // Every successful write announces itself on the data-change bus so the
 // always-mounted tabs refetch (callers can't forget to).
@@ -46,23 +47,56 @@ function reminderToApi(r) {
 
 const getAllReminders = async () => (await apiFetch('/api/reminders')).map(reminderFromApi);
 
-const createReminder = async (data) =>
-  reminderChanged(reminderFromApi(await apiFetch('/api/reminders', { method: 'POST', json: reminderToApi(data) })));
+// Writes go through writeOrQueue: with no connection they are queued (encrypted) and synced later.
+const findReminder = async (id) => (await apiFetch('/api/reminders')).find((r) => r.id === id);
+
+const createReminder = async (data) => {
+  const json = { ...reminderToApi(data), id: newReminderId() }; // client id: a retried or queued create can't duplicate
+  return writeOrQueue(
+    { kind: 'reminder.create', data: json },
+    async () => reminderChanged(reminderFromApi(await apiFetch('/api/reminders', { method: 'POST', json }))),
+    () => reminderFromApi({ done: false, createdAt: new Date().toISOString(), ...json }),
+    'reminders',
+  );
+};
 
 const updateReminder = async (data) => {
   const json = { ...reminderToApi(data), done: Boolean(data.completed), snoozedUntil: data.snoozedUntil ? iso(data.snoozedUntil) : null };
-  return reminderChanged(reminderFromApi(await apiFetch(`/api/reminders/${encodeURIComponent(data.id)}`, { method: 'PUT', json })));
+  return writeOrQueue(
+    { kind: 'reminder.update', reminderId: data.id, patch: json },
+    async () => reminderChanged(reminderFromApi(await apiFetch(`/api/reminders/${encodeURIComponent(data.id)}`, { method: 'PUT', json }))),
+    async () => reminderFromApi((await findReminder(data.id)) ?? { id: data.id, ...json }),
+    'reminders',
+  );
 };
 
-const deleteReminder = async (id) => { await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' }); reminderChanged(); };
+const deleteReminder = async (id) => {
+  await writeOrQueue(
+    { kind: 'reminder.delete', reminderId: id },
+    async () => { await apiFetch(`/api/reminders/${encodeURIComponent(id)}`, { method: 'DELETE' }); reminderChanged(); },
+    () => undefined,
+    'reminders',
+  );
+};
 
 const toggleComplete = async (id) => {
-  const current = (await apiFetch('/api/reminders')).find((r) => r.id === id);
+  const current = await findReminder(id);
   if (!current) throw new Error('Reminder not found');
-  const saved = current.done
-    ? await apiFetch(`/api/reminders/${id}`, { method: 'PUT', json: { done: false } })
-    : await apiFetch(`/api/reminders/${id}/complete`, { method: 'POST' });
-  return reminderChanged(reminderFromApi(saved));
+  const after = async () => reminderFromApi((await findReminder(id)) ?? current);
+  if (current.done) {
+    return writeOrQueue(
+      { kind: 'reminder.update', reminderId: id, patch: { done: false } },
+      async () => reminderChanged(reminderFromApi(await apiFetch(`/api/reminders/${id}`, { method: 'PUT', json: { done: false } }))),
+      after,
+      'reminders',
+    );
+  }
+  return writeOrQueue(
+    { kind: 'reminder.complete', reminderId: id },
+    async () => reminderChanged(reminderFromApi(await apiFetch(`/api/reminders/${id}/complete`, { method: 'POST' }))),
+    after,
+    'reminders',
+  );
 };
 
 const deleteAllReminders = async () => {

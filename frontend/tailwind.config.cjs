@@ -1,4 +1,4 @@
-/** @type {import('tailwindcss').Config} */
+﻿/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   darkMode: 'class',
@@ -75,7 +75,7 @@ module.exports = {
           warning: '#E0A100',
           error: '#BA1A1A',
           '--rounded-box': '1rem',
-          '--rounded-btn': '9999px',
+          '--rounded-btn': '0.75rem',
           '--rounded-badge': '9999px',
         },
         'clio-dark': {
@@ -88,16 +88,16 @@ module.exports = {
           'accent-content': '#072B30',
           neutral: '#EDF2F2',
           'neutral-content': '#072B30',
-          'base-100': '#0E3A41',
-          'base-200': '#072B30',
-          'base-300': '#13454D',
-          'base-content': '#E8F1F2',
+          'base-100': '#0E2229',
+          'base-200': '#08161B',
+          'base-300': '#132C34',
+          'base-content': '#E6F0F1',
           info: '#85BBC6',
           success: '#4FD1A0',
           warning: '#F5C542',
           error: '#FF8A80',
           '--rounded-box': '1rem',
-          '--rounded-btn': '9999px',
+          '--rounded-btn': '0.75rem',
           '--rounded-badge': '9999px',
         },
       },

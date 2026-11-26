@@ -18,7 +18,7 @@ describe('CheckinForm', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Mood 4' }));
     await userEvent.type(screen.getByLabelText(/what happened/i), 'Dentist at 9');
     await userEvent.click(screen.getByRole('button', { name: /save check-in/i }));
-    expect(onSubmit).toHaveBeenCalledWith({ mood: 4, events: 'Dentist at 9', thoughts: '', ideas: '' });
+    expect(onSubmit).toHaveBeenCalledWith({ mood: 4, events: 'Dentist at 9', thoughts: '', ideas: '', photos: [], people: [], places: [] });
   });
   it('calls onSkip', async () => {
     const onSkip = vi.fn();

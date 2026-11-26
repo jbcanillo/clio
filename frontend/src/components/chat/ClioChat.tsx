@@ -1,7 +1,9 @@
 import { useCopilotChatInternal } from '@copilotkit/react-core';
 import { useCopilotKit } from '@copilotkit/react-core/v2/context';
-import { ArrowUp, MessageCircle, Sparkles, Square } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { MessageCircle, Send, Sparkles, Square } from 'lucide-react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { apiFetch } from '../../lib/api';
+import { failureReason, type KeyTest } from '../../lib/keyStatus';
 import { emitDataChanged } from '../../lib/dataEvents';
 import type { Scope } from '../../lib/types';
 import { newUuid } from '../../lib/uuid';
@@ -46,6 +48,8 @@ interface CoreErrorEvent {
   context?: Record<string, unknown>;
 }
 
+const GENERIC_FAILURE = "Clio couldn't answer. Check Settings or try again.";
+
 function isChatFailure(e: CoreErrorEvent): boolean {
   if (!e.code || !FAILURE_CODES.has(e.code)) return false;
   // RUN_ERROR replayed from stored history on connect is not a new failure.
@@ -61,6 +65,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
 
   const [draft, setDraft] = useState('');
   const [failed, setFailed] = useState(false);
+  const [reason, setReason] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
   const pageInputRef = useRef<HTMLTextAreaElement>(null);
@@ -83,6 +88,21 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
     });
     return () => sub.unsubscribe();
   }, [copilotkit]);
+
+  // On a failure, ask the server why (the run error itself doesn't reach us with a usable cause).
+  useEffect(() => {
+    if (!failed) {
+      setReason(null);
+      return;
+    }
+    let live = true;
+    apiFetch<KeyTest>('/api/settings/test-key', { method: 'POST' })
+      .then((r) => live && setReason(failureReason(r)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [failed]);
 
   // Sheet mode moves the composer into the sheet: keep focus on whichever textarea is showing.
   const prevSheetOpen = useRef(sheetOpen);
@@ -161,18 +181,23 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
     }
   };
 
-  const alertCls = 'flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-ink';
+  const alertCls = 'flex items-center justify-between gap-3 rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-ink';
   let alert: ReactNode = null;
   if (failed) {
     alert = (
       <div role="alert" className={alertCls}>
-        <span>Clio couldn't answer. Check Settings or try again.</span>
+        <span>
+          {reason ?? GENERIC_FAILURE}{' '}
+          <a href="#/settings" className="font-semibold text-[var(--primary)] underline">
+            Open Settings
+          </a>
+        </span>
         {retryPrompt ? (
           <button
             type="button"
             onClick={retry}
             disabled={!isAvailable || isLoading}
-            className="shrink-0 rounded-full border border-error/30 px-3 py-1 text-xs font-semibold text-error disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-error/30 px-4 py-2 text-sm font-semibold text-error disabled:opacity-50"
           >
             Retry
           </button>
@@ -203,9 +228,9 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
           type="button"
           onClick={() => void send(c.prompt)}
           disabled={!isAvailable || isLoading}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-card transition-colors hover:bg-inset disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-hairline bg-card px-4 py-2.5 text-sm font-semibold text-ink-soft shadow-card transition-colors hover:bg-inset disabled:opacity-50"
         >
-          <Sparkles aria-hidden="true" size={12} className="text-ember" />
+          <Sparkles aria-hidden="true" size={14} className="text-ember" />
           {c.label}
         </button>
       ))}
@@ -218,7 +243,7 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
         e.preventDefault();
         submit();
       }}
-      className="glass flex items-end gap-2 rounded-xl border border-hairline p-1.5 shadow-card"
+      className="glass flex items-end gap-2 rounded-xl border border-hairline p-2 shadow-card"
     >
       <label htmlFor={inputId} className="sr-only">
         Message Clio
@@ -232,14 +257,14 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         data-scope={scope}
-        className="max-h-40 min-h-[2.5rem] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-ink-muted focus:outline-none"
+        className="max-h-40 min-h-[3rem] flex-1 resize-none bg-transparent px-3 py-3 text-base leading-normal text-ink placeholder:text-ink-muted focus:outline-none"
       />
       {isLoading ? (
         <button
           type="button"
           aria-label="Stop"
           onClick={() => stopGeneration()}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-hairline bg-inset text-ink"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-hairline bg-inset text-ink"
         >
           <Square aria-hidden="true" size={14} fill="currentColor" />
         </button>
@@ -248,12 +273,26 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
         type="submit"
         aria-label="Send"
         disabled={!canSend}
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal text-on-teal shadow-card transition-opacity disabled:opacity-40"
+        className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal text-on-teal shadow-card transition-opacity disabled:opacity-40"
       >
-        <ArrowUp aria-hidden="true" size={18} />
+        <Send aria-hidden="true" size={18} />
       </button>
     </form>
   );
+
+  // Sheet mode docks the composer above the bottom navigation; track its height for the spacer.
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockHeight, setDockHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = dockRef.current;
+    if (!el) return;
+    const measure = () => setDockHeight(el.offsetHeight);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mode]);
 
   const thread = <MessageList messages={messages} isLoading={isLoading} empty={empty} />;
 
@@ -280,18 +319,25 @@ export function ClioChat({ scope, placeholder, chips, mode, empty, sheetTitle, p
     </div>
   );
   return (
-    <div className="space-y-2">
+    <div>
+      {/* Reserve the docked composer's height so the page can scroll content clear of it. */}
+      <div aria-hidden="true" style={{ height: dockHeight }} />
+      <div
+        ref={dockRef}
+        className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-3xl space-y-2 px-4 pb-2 pt-2"
+      >
       {!sheetOpen && visible.length > 0 ? (
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-3 py-1.5 text-xs font-semibold text-[var(--primary)] shadow-card"
+          className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-4 py-2 text-sm font-semibold text-[var(--primary)] shadow-card"
         >
           <MessageCircle aria-hidden="true" size={14} />
           Conversation
         </button>
       ) : null}
       {sheetOpen ? null : renderControls(pageInputRef)}
+      </div>
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={sheetTitle ?? 'Clio'}>
         <div className="flex flex-col gap-4">
           {thread}

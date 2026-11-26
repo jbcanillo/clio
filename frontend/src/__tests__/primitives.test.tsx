@@ -24,7 +24,7 @@ describe('Chip', () => {
 describe('AiBadge', () => {
   it('shows default label', () => {
     render(<AiBadge />);
-    expect(screen.getByText('AI Synthesized')).toBeInTheDocument();
+    expect(screen.getByText('Clio')).toBeInTheDocument();
   });
 });
 

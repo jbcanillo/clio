@@ -11,6 +11,22 @@ export interface Reminder {
   snoozedUntil?: string;
   completedAt?: string;
   notes: string;
+  /** Free-form extras: photos (attachment file names), contact, location, checklist… */
+  extras?: Record<string, unknown>;
+}
+
+/** Someone attached to a check-in or reminder. */
+export interface Person {
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+/** A pinned place. */
+export interface Place {
+  lat: number;
+  lng: number;
+  label?: string;
 }
 
 export interface Hit {
@@ -38,6 +54,8 @@ export interface NoteSummary {
   updated: string;
   hash: string;
   checklist: { index: number; text: string; done: boolean }[];
+  /** Attachment file names linked from the note body. */
+  photos?: string[];
 }
 
 export interface DaySummary {
@@ -48,4 +66,7 @@ export interface DaySummary {
   /** True even when all section counts are zero (mood-only days). */
   hasEntry: boolean;
   sections: { thoughts: number; ideas: number; events: number };
+  photos?: string[];
+  people?: string[];
+  places?: Place[];
 }

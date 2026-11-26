@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AddReminderForm from '../components/features/AddReminderForm';
+import { Sheet } from '../components/ui/Sheet';
 import { ClioChat } from '../components/chat/ClioChat';
+import { PageHeader } from '../components/layout/PageHeader';
 import { ReminderCards } from '../components/gen/ReminderCards';
 import EditReminderFormModal from '../components/features/EditReminderFormModal';
 import { Chip } from '../components/ui/Chip';
@@ -48,7 +51,9 @@ function syncedLabel(at: number | null, now: number): string {
 export default function RemindersPage() {
   const navigate = useNavigate();
   const version = useDataVersion('reminders');
-  const { updateReminder } = useReminders();
+  const { createReminder, updateReminder } = useReminders();
+  const location = useLocation();
+  const [adding, setAdding] = useState(false);
   const { addToast } = useToast();
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
   const [error, setError] = useState(false);
@@ -111,27 +116,35 @@ export default function RemindersPage() {
     [editing, updateReminder],
   );
 
-  const add = () => navigate('/reminders/new');
+  const add = () => setAdding(true);
+
+  // Old /reminders/new links land here with ?new=1: open the form, then clear the param.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('new') !== '1') return;
+    setAdding(true);
+    navigate(location.pathname, { replace: true });
+  }, [location.search, location.pathname, navigate]);
 
   return (
     <section aria-label="Reminders" className="px-4 py-4">
-      <header className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-ink-muted">Proactive flow</p>
-          <h2 className="font-display text-2xl font-bold text-ink">Today&apos;s Horizons</h2>
-          <span className="mt-1 inline-flex items-center rounded-full border border-hairline bg-inset px-2.5 py-0.5 text-xs font-medium text-ink-soft">
-            {syncedLabel(syncedAt, now)}
-          </span>
-        </div>
-        <button
-          type="button"
-          aria-label="Add reminder"
-          onClick={add}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ember text-xl font-bold text-white"
-        >
-          <span aria-hidden="true">+</span>
-        </button>
-      </header>
+      <PageHeader
+        title="Reminders"
+        subtitle="What's due today and coming up. Complete, snooze or edit a reminder, or ask Clio to set one for you."
+        action={
+          <button
+            type="button"
+            aria-label="Add reminder"
+            onClick={add}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-ember text-xl font-bold text-white"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        }
+      >
+        <span className="mt-2 inline-flex items-center rounded-full border border-hairline bg-inset px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+          {syncedLabel(syncedAt, now)}
+        </span>
+      </PageHeader>
 
       {error ? (
         <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-error/30 bg-error/10 p-3 text-sm text-error">
@@ -212,6 +225,15 @@ export default function RemindersPage() {
       {editing ? (
         <EditReminderFormModal reminder={reminderFromApi(editing)} onDismiss={() => setEditing(null)} onSubmit={onEditSave} onToast={addToast} />
       ) : null}
+
+      <Sheet open={adding} onClose={() => setAdding(false)} title="New reminder">
+        <AddReminderForm
+          embedded
+          onDismiss={() => setAdding(false)}
+          onToast={addToast}
+          onSubmit={async (data: unknown) => { await createReminder(data); }} // the store emits 'reminders'
+        />
+      </Sheet>
 
       <ClioActions scope="reminders" timezone={tz} />
       <ClioChat scope="reminders" mode="sheet" placeholder="Remind me to…" chips={CHIPS} sheetTitle="Clio" />

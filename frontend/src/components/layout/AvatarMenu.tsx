@@ -1,7 +1,9 @@
-import { Bell, DatabaseBackup, Download, Moon, RotateCcw, Settings, Sun } from 'lucide-react';
+import { Bell, DatabaseBackup, Download, Lock, Menu, Moon, RotateCcw, Settings, Sun } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearToken } from '../../lib/api';
 import { applyTheme, getInitialTheme, type Theme } from '../../lib/theme';
+import { lockOutbox } from '../../offline/session';
 
 export interface AvatarMenuProps {
   onEnableNotifications?: () => void;
@@ -35,6 +37,11 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
     applyTheme(next);
     setTheme(next);
   };
+  // Forget this tab's session and the offline-notes key; the auth gate shows the unlock screen.
+  const lock = () => {
+    lockOutbox();
+    clearToken();
+  };
   const canNotify = typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted';
 
   const item = (label: string, icon: ReactNode, onClick: () => void) => (
@@ -64,16 +71,17 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Account menu"
+        aria-label="Menu"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-teal font-display text-sm font-bold text-on-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-inset focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
       >
-        C
+        <Menu aria-hidden="true" size={22} />
       </button>
       {open && (
         <div role="menu" aria-label="Account" className="absolute right-0 top-11 z-50 w-56 rounded-2xl border border-hairline bg-card p-1.5 shadow-modal">
+          {item('Lock', <Lock size={16} />, lock)}
           {item('Settings', <Settings size={16} />, () => navigate('/settings'))}
           {item('Backup', <DatabaseBackup size={16} />, () => navigate('/backup'))}
           {item('Restore', <RotateCcw size={16} />, () => navigate('/restore'))}

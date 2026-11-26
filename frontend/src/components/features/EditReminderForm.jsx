@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { usePhotoLibrary } from '../../hooks/usePhotoLibrary';
-import ContactPicker from './ContactPicker';
-import LocationPicker from './LocationPicker';
+import { PhotoPicker } from '../media/PhotoPicker';
+import { PeoplePicker } from '../media/PeoplePicker';
+import { PlacePicker } from '../media/PlacePicker';
+import { savePhotoItems } from '../../lib/media';
 
 const editReminderSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -26,48 +27,21 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [photos, setPhotos] = useState([]);
-  const [location, setLocation] = useState(null);
-  const [contact, setContact] = useState(null);
-  const [showContactPicker, setShowContactPicker] = useState(false);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [photos, setPhotos] = useState([]); // PhotoItem[]
+  const [places, setPlaces] = useState([]); // at most one
+  const [people, setPeople] = useState([]); // at most one
   const [checklist, setChecklist] = useState(reminder.checklist || [{ id: Date.now(), text: '', completed: false }]);
 
-  const { photoLibrary: { openPhotoLibrary } } = usePhotoLibrary();
-
-  // Initialize attachment states from reminder
+  // Stored attachments: photo file names (older reminders may hold unusable values), one contact, one location.
   useEffect(() => {
-    if (reminder) {
-      // Photos: if stored as Blob, create preview URLs
-      if (reminder.photos && Array.isArray(reminder.photos)) {
-        const initialPhotos = reminder.photos.map(photo => ({
-          file: photo,
-          preview: URL.createObjectURL(photo)
-        }));
-        setPhotos(initialPhotos);
-      } else {
-        setPhotos([]);
-      }
-      setLocation(reminder.location || null);
-      setContact(reminder.contact || null);
-    }
+    if (!reminder) return;
+    const files = Array.isArray(reminder.photos) ? reminder.photos.filter((f) => typeof f === 'string' && /^[a-z0-9]{8,40}\.(jpg|png|webp|gif)$/.test(f)) : [];
+    setPhotos(files.map((file) => ({ file })));
+    const loc = reminder.location;
+    setPlaces(loc && typeof loc.lat === 'number' && typeof loc.lng === 'number' ? [loc] : []);
+    const c = reminder.contact;
+    setPeople(c && typeof c.name === 'string' && c.name ? [c] : []);
   }, [reminder]);
-
-  const handleAddPhoto = async () => {
-    try {
-      const result = await openPhotoLibrary();
-      if (result && result.file) {
-        const preview = URL.createObjectURL(result.file);
-        setPhotos(prev => [...prev, { file: result.file, preview }]);
-      }
-    } catch (err) {
-      console.error('Failed to pick photo:', err);
-    }
-  };
-
-  const removePhoto = (index) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
-  };
 
   // Checklist handlers
   const addChecklistItem = () => {
@@ -113,9 +87,9 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
       const payload = {
         ...reminder,
         ...data,
-        photos: photos.map(p => p.file),
-        location,
-        contact,
+        photos: await savePhotoItems(photos), // uploads (or queues) the new ones; stores file names
+        location: places[0] ?? null,
+        contact: people[0] ?? null,
         checklist: validChecklist
       };
       await onSubmit(payload);
@@ -259,94 +233,21 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
       </div>
 
       {/* Photos */}
-      <div className="mb-4">
-        <label className="label">
-          <span className="label-text font-medium">Photos</span>
-        </label>
-        <button type="button" onClick={handleAddPhoto} className="btn btn-secondary btn-sm">
-          Add Photo
-        </button>
-        {photos.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {photos.map((photo, idx) => (
-              <div key={idx} className="relative">
-                <img
-                  src={photo.preview}
-                  alt={`Preview ${idx}`}
-                  className="w-16 h-16 object-cover rounded-box"
-                />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(idx)}
-                  className="absolute -top-1 -right-1 btn btn-circle btn-error btn-xs text-white"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="mb-5">
+        <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Photos</span>
+        <PhotoPicker value={photos} onChange={setPhotos} />
       </div>
 
       {/* Contact */}
-      <div className="mb-4">
-        <label className="label">
-          <span className="label-text font-medium">Contact</span>
-        </label>
-        {contact ? (
-          <div className="flex items-center justify-between bg-base-200 p-3 rounded-box border border-base-300">
-            <div>
-              <p className="font-medium text-base-content">{contact.name}</p>
-              <p className="text-sm text-base-content/60">{contact.email || contact.phone}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setContact(null)}
-              className="btn btn-ghost btn-xs text-error"
-            >
-              Remove
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowContactPicker(true)}
-            className="btn btn-secondary btn-sm"
-          >
-            Select Contact
-          </button>
-        )}
+      <div className="mb-5">
+        <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Contact</span>
+        <PeoplePicker single value={people} onChange={setPeople} />
       </div>
 
       {/* Location */}
-      <div className="mb-4">
-        <label className="label">
-          <span className="label-text font-medium">Location</span>
-        </label>
-        {location ? (
-          <div className="flex items-center justify-between bg-base-200 p-3 rounded-box border border-base-300">
-            <div className="text-sm text-base-content">
-              <p>
-                Lat: {location.lat.toFixed(5)}, Lng: {location.lng.toFixed(5)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setLocation(null)}
-              className="btn btn-ghost btn-xs text-error"
-            >
-              Remove
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowLocationPicker(true)}
-            className="btn btn-secondary btn-sm"
-          >
-            Pick Location
-          </button>
-        )}
+      <div className="mb-5">
+        <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Location</span>
+        <PlacePicker single value={places} onChange={setPlaces} />
       </div>
 
       <div className="flex gap-4">
@@ -366,26 +267,7 @@ const EditReminderForm = ({ reminder, onDismiss, onSubmit }) => {
         </button>
       </div>
 
-      {/* Modals */}
-      {showContactPicker && (
-        <ContactPicker
-          onSelect={(c) => {
-            setContact(c);
-            setShowContactPicker(false);
-          }}
-          onClose={() => setShowContactPicker(false)}
-        />
-      )}
 
-      {showLocationPicker && (
-        <LocationPicker
-          onConfirm={(loc) => {
-            if (loc) setLocation({ lat: loc.lat, lng: loc.lng });
-            setShowLocationPicker(false);
-          }}
-          onCancel={() => setShowLocationPicker(false)}
-        />
-      )}
     </form>
   );
 };

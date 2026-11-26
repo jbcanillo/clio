@@ -1,6 +1,8 @@
+import { Camera, MapPin, User } from 'lucide-react';
 import { useState } from 'react';
 import { tomorrowNineAm } from '../../lib/today';
-import type { Reminder } from '../../lib/types';
+import type { Person, Place, Reminder } from '../../lib/types';
+import { mapLink, placeLabel } from '../media/PlacePicker';
 import { Chip } from '../ui/Chip';
 import { CircleCheck } from '../ui/CircleCheck';
 
@@ -28,11 +30,25 @@ function tomorrowNine(timezone?: string): string {
   return d.toISOString();
 }
 
+/** What a reminder carries in its extras (older reminders may hold values of other shapes). */
+function attachmentsOf(r: Reminder) {
+  const x = (r.extras ?? {}) as { photos?: unknown; contact?: unknown; location?: unknown };
+  const photos = Array.isArray(x.photos) ? x.photos.filter((f): f is string => typeof f === 'string') : [];
+  const c = x.contact as Person | null | undefined;
+  const l = x.location as Place | null | undefined;
+  return {
+    photos,
+    contact: c && typeof c.name === 'string' && c.name ? c : null,
+    location: l && typeof l.lat === 'number' && typeof l.lng === 'number' ? l : null,
+  };
+}
+
 function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'reminders' | 'grouped'> & { r: Reminder }) {
   const [checked, setChecked] = useState(r.done);
   const [failed, setFailed] = useState(false);
   const [menu, setMenu] = useState(false);
   const overdue = isOverdue({ ...r, done: checked }, Date.now());
+  const att = attachmentsOf(r);
 
   const complete = async (next: boolean) => {
     if (!next) return;
@@ -74,6 +90,11 @@ function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'remind
             <Chip tone={overdue ? 'ember' : 'neutral'}>{fmt(r.due, timezone)}</Chip>
             {r.priority === 'high' ? <Chip tone="ember">high</Chip> : <Chip>{r.priority}</Chip>}
             {r.repeat !== 'never' ? <Chip tone="teal">{r.repeat}</Chip> : null}
+            {att.contact ? <Chip icon={<User size={12} />}>{att.contact.name}</Chip> : null}
+            {att.location ? (
+              <a href={mapLink(att.location)} target="_blank" rel="noreferrer noopener"><Chip tone="ember" icon={<MapPin size={12} />}>{placeLabel(att.location)}</Chip></a>
+            ) : null}
+            {att.photos.length ? <Chip icon={<Camera size={12} />}>{String(att.photos.length)}</Chip> : null}
           </div>
         </div>
         <div className="relative">
