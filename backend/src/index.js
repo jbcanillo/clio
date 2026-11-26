@@ -22,6 +22,7 @@ import { createNotesService } from './services/notesService.js';
 import { createSyncService } from './services/syncService.js';
 import { createOpsSyncService } from './services/opsSyncService.js';
 import { createAttachmentService } from './services/attachmentService.js';
+import { createBackupService } from './services/backupService.js';
 
 const config = loadConfig();
 fs.mkdirSync(config.vaultDir, { recursive: true });
@@ -50,7 +51,8 @@ else console.warn('VAPID keys not set: daily check-in notifications are disabled
 const notes = createNotesService({ vault });
 const sync = createSyncService({ vault, dataDir: config.dataDir, memory });
 const attachments = createAttachmentService({ vault });
+const backup = createBackupService({ vault });
 const opsSync = createOpsSyncService({ reminders, daily, attachments, dataDir: config.dataDir, memory });
 
-const app = createApp({ notes, importer, journal, sync, opsSync, attachments, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
+const app = createApp({ backup, notes, importer, journal, sync, opsSync, attachments, openrouterBaseUrl: config.openrouterBaseUrl, config, settings, auth, vault, daily, reminders, memory, shareSession, push, scheduler });
 app.listen(config.port, '0.0.0.0', () => console.log(`Clio API listening on ${config.port}`));

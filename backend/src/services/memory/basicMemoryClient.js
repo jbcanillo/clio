@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { titleOf, dateOf, snippetOf } from './shared.js';
+import { titleOf, dateOf, snippetOf, searchText } from './shared.js';
 
 const HIT_LINE = /^\s*-\s+(.+?)\s+\|\s+(.*?)\s+\|\s+score\s+(-?[\d.]+)\s*$/;
 
@@ -80,7 +80,7 @@ export function createBasicMemoryClient({
       out.push({
         path: raw.path,
         title: titleOf(file),
-        snippet: snippetOf(file.body, query),
+        snippet: snippetOf(searchText(file), query),
         score: raw.score,
         private: isPrivate,
         ...(date ? { date } : {}),

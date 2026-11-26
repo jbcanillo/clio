@@ -152,5 +152,47 @@ export function createVaultService({ vaultDir }) {
     return { created: true };
   }
 
-  return { read, write, list, remove, uniquePath, readFile, writeFileOnce };
+  /** Every regular file under relDir (any type, leftover .tmp files skipped), sorted. */
+  async function listFiles(relDir) {
+    const abs = resolve(relDir);
+    const out = [];
+    async function walk(dir, rel) {
+      let entries;
+      try {
+        entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      } catch (e) {
+        if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return;
+        throw e;
+      }
+      for (const entry of entries) {
+        const childRel = `${rel}/${entry.name}`;
+        if (entry.isDirectory()) await walk(path.join(dir, entry.name), childRel);
+        else if (entry.isFile() && !entry.name.endsWith('.tmp')) out.push(childRel);
+      }
+    }
+    await walk(abs, relDir.replace(/\/+$/, ''));
+    return out.sort();
+  }
+
+  /** Writes raw bytes atomically, replacing any existing file (used by restore). */
+  async function writeRaw(relPath, buf) {
+    const abs = resolve(relPath);
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    resolve(relPath); // re-check after mkdir: a symlinked parent must not slip through
+    const tmp = `${abs}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+    try {
+      await fs.promises.writeFile(tmp, buf);
+      await fs.promises.rename(tmp, abs);
+    } catch (e) {
+      await fs.promises.rm(tmp, { force: true });
+      throw e;
+    }
+  }
+
+  /** Deletes a file; a missing file is not an error. */
+  async function deleteFile(relPath) {
+    await fs.promises.rm(resolve(relPath), { force: true });
+  }
+
+  return { read, write, list, remove, uniquePath, readFile, writeFileOnce, listFiles, writeRaw, deleteFile };
 }

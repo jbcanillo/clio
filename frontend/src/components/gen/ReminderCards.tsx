@@ -90,7 +90,7 @@ function Card({ r, onComplete, onSnooze, onEdit, timezone }: Omit<Props, 'remind
             <Chip tone={overdue ? 'ember' : 'neutral'}>{fmt(r.due, timezone)}</Chip>
             {r.priority === 'high' ? <Chip tone="ember">high</Chip> : <Chip>{r.priority}</Chip>}
             {r.repeat !== 'never' ? <Chip tone="teal">{r.repeat}</Chip> : null}
-            {att.contact ? <Chip icon={<User size={12} />}>{att.contact.name}</Chip> : null}
+            {att.contact ? <Chip icon={<User size={12} />}>{[att.contact.name, att.contact.phone, att.contact.email].filter(Boolean).join(' · ')}</Chip> : null}
             {att.location ? (
               <a href={mapLink(att.location)} target="_blank" rel="noreferrer noopener"><Chip tone="ember" icon={<MapPin size={12} />}>{placeLabel(att.location)}</Chip></a>
             ) : null}

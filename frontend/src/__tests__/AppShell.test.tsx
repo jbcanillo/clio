@@ -19,7 +19,8 @@ vi.mock('../pages/DiaryPage', () => ({ default: () => <section aria-label="Diary
 vi.mock('../pages/NotesPage', () => ({ default: () => <section aria-label="Notes" /> }));
 vi.mock('../pages/SettingsPage', () => ({ default: () => <section aria-label="Settings page" /> }));
 vi.mock('../components/features/NotificationManager', () => ({ default: () => null }));
-vi.mock('../components/features/BackupRestorePage', () => ({ default: () => <section aria-label="Backup page" /> }));
+vi.mock('../pages/BackupRestorePage', () => ({ default: () => <section aria-label="Backup page" /> }));
+vi.mock('../pages/PrivacyPage', () => ({ default: () => <section aria-label="Privacy page" /> }));
 vi.mock('../hooks/useReminders', () => ({
   useReminders: () => ({
     reminders: [], loading: false, createReminder: vi.fn(), updateReminder: vi.fn(), completeReminder: vi.fn(),
@@ -57,11 +58,37 @@ describe('App shell', () => {
     expect(screen.getByTestId('scope-chat').parentElement).toHaveAttribute('hidden');
   });
 
-  it('avatar menu lists Settings/Backup/Restore and Settings navigates', async () => {
+  it('header has a privacy notice button right before the menu, and it opens the privacy page', async () => {
+    renderApp('#/chat');
+    const privacy = screen.getByRole('button', { name: 'Privacy notice' });
+    expect(privacy.nextElementSibling?.querySelector('button[aria-label="Menu"]')).not.toBeNull();
+    await userEvent.click(privacy);
+    expect(window.location.hash).toBe('#/privacy');
+    expect(screen.getByLabelText('Privacy page')).toBeInTheDocument();
+  });
+
+  it('backup and restore are one menu item and one page; the old /restore link opens it', async () => {
     renderApp('#/chat');
     await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
     const items = screen.getAllByRole('menuitem').map((i) => i.textContent);
-    expect(items).toEqual(expect.arrayContaining(['Settings', 'Backup', 'Restore']));
+    expect(items).toContain('Backup & restore');
+    expect(items).not.toContain('Restore');
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Backup & restore' }));
+    expect(window.location.hash).toBe('#/backup');
+    expect(screen.getByLabelText('Backup page')).toBeInTheDocument();
+  });
+
+  it('the old /restore link opens the combined backup page', async () => {
+    renderApp('#/restore');
+    expect(await screen.findByLabelText('Backup page')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/backup');
+  });
+
+  it('avatar menu lists Settings and Settings navigates', async () => {
+    renderApp('#/chat');
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    const items = screen.getAllByRole('menuitem').map((i) => i.textContent);
+    expect(items).toEqual(expect.arrayContaining(['Settings', 'Backup & restore']));
     await userEvent.click(screen.getByRole('menuitem', { name: /settings/i }));
     expect(window.location.hash).toBe('#/settings');
     expect(screen.queryByRole('menu')).toBeNull();

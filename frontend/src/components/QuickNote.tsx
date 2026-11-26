@@ -44,7 +44,7 @@ export function QuickNote({ onSave, initial, submitLabel = 'Save note', onCancel
 
   const empty = title.trim() === '' || (body.trim() === '' && photos.length === 0);
   return (
-    <form onSubmit={submit} className="card bg-base-200 p-3 space-y-2">
+    <form onSubmit={submit} className="space-y-3">
       <label className="block text-sm">Title
         <input className="input input-bordered input-sm w-full mt-1" value={title} onChange={(e) => { setTitle(e.target.value); setStatus('idle'); }} />
       </label>

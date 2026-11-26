@@ -21,12 +21,16 @@ const limiter = (max, skip) =>
 const isAgentRun = (req) => req.body?.method === 'agent/run';
 
 /** JSON body parsing with a size cap that depends on the route. */
-function bodyParser() {
+function bodyParser(auth) {
   const small = express.json({ limit: '1mb' });
   const copilot = express.json({ limit: '100kb' });
   const bulk = express.json({ limit: '5mb' });
+  // Restore batches carry photos as base64; the client keeps each batch well under this.
+  const backup = express.json({ limit: '30mb' });
   return (req, res, next) => {
     if (req.path.startsWith('/api/import')) return bulk(req, res, next);
+    // Only a signed-in session gets the large backup limit; anyone else is refused before parsing.
+    if (req.path.startsWith('/api/backup')) return auth?.verify(req.get('X-Session-Token')) ? backup(req, res, next) : small(req, res, next);
     // Photos travel as base64 JSON, directly or inside an offline sync batch.
     if (req.path.startsWith('/api/attachments') || req.path.startsWith('/api/sync/ops')) return bulk(req, res, next);
     if (req.path.startsWith('/api/copilotkit')) return copilot(req, res, next);
@@ -54,7 +58,7 @@ export function createApp(deps = {}) {
 
   app.use('/api/auth/login', limiter(limits.login));
   app.use('/api', limiter(limits.api));
-  app.use(bodyParser());
+  app.use(bodyParser(deps.auth));
   // After body parsing, so the limiter can tell agent runs from setup calls.
   app.use('/api/copilotkit', limiter(limits.copilot, (req) => !isAgentRun(req)));
 

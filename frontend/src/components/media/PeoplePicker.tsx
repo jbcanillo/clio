@@ -64,7 +64,7 @@ export function PeoplePicker({ value, onChange, single = false }: Props) {
           {value.map((p, i) => (
             <li key={`${p.name}-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-inset py-1 pl-3 pr-1 text-xs text-ink">
               <span className="font-semibold">{p.name}</span>
-              {p.phone || p.email ? <span className="text-ink-muted">{p.phone || p.email}</span> : null}
+              {p.phone || p.email ? <span className="text-ink-muted">{[p.phone, p.email].filter(Boolean).join(' · ')}</span> : null}
               <button type="button" aria-label={`Remove ${p.name}`} onClick={() => onChange(value.filter((_, j) => j !== i))} className="inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-card">
                 <X size={12} aria-hidden="true" />
               </button>

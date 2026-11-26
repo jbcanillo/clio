@@ -1,7 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import BackupRestorePage from './components/features/BackupRestorePage';
 import NotificationManager from './components/features/NotificationManager';
 import AppHeader, { type HeaderStatus } from './components/layout/AppHeader';
 import CosmicBackdrop from './components/layout/CosmicBackdrop';
@@ -19,6 +18,8 @@ import DiaryPage from './pages/DiaryPage';
 import NotesPage from './pages/NotesPage';
 import RemindersPage from './pages/RemindersPage';
 import SettingsPage from './pages/SettingsPage';
+import BackupRestorePage from './pages/BackupRestorePage';
+import PrivacyPage from './pages/PrivacyPage';
 import { deleteAlarm, requestNotificationPermission, upsertAlarm } from './utils/notificationSync';
 import { removeNotificationForReminder, updateNotificationForReminder } from './utils/notifications';
 
@@ -181,23 +182,16 @@ function AppContent() {
           ))}
           <Route
             path="/settings"
-            element={<BackBar onBack={goBack('/chat')}><SettingsPage /></BackBar>}
+            element={<BackBar onBack={goBack('/chat')}><SettingsPage onToast={toast.addToast} /></BackBar>}
           />
           <Route
             path="/backup"
-            element={
-              <BackBar onBack={goBack('/chat')}>
-                <BackupRestorePage mode="backup" onBack={goBack('/chat')} onToast={toast.addToast} />
-              </BackBar>
-            }
+            element={<BackBar onBack={goBack('/chat')}><BackupRestorePage onToast={toast.addToast} /></BackBar>}
           />
+          <Route path="/restore" element={<Navigate to="/backup" replace />} />
           <Route
-            path="/restore"
-            element={
-              <BackBar onBack={goBack('/chat')}>
-                <BackupRestorePage mode="restore" onBack={goBack('/chat')} onToast={toast.addToast} />
-              </BackBar>
-            }
+            path="/privacy"
+            element={<BackBar onBack={goBack('/chat')}><PrivacyPage /></BackBar>}
           />
           <Route path="/reminders/new" element={<Navigate to="/reminders?new=1" replace />} />
           <Route path="*" element={<Navigate to="/chat" replace />} />

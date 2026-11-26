@@ -12,7 +12,8 @@ leaves your server, what is encrypted, and what is **not** protected. It is a te
 | Push subscriptions, check-in state, sync receipts | `data` volume | Plain JSON (endpoints and ids, no note text) |
 | Sign-in sessions | API process memory | Lost on restart; 8 hours by default |
 | Notes written offline | Browser IndexedDB | AES-GCM-256, key derived (PBKDF2-SHA256, 210k rounds) from your password and kept only in memory |
-| Backups | A file you choose | AES-256-CBC with PBKDF2, passphrase `BACKUP_PASSPHRASE` (no integrity check beyond a successful extract) |
+| Server backups (`scripts/backup.sh`) | A file you choose | AES-256-CBC with PBKDF2, passphrase `BACKUP_PASSPHRASE` (no integrity check beyond a successful extract) |
+| In-app backups (*Backup & restore*) | A file you download | AES-256-GCM in the browser, key from your backup password (PBKDF2-SHA256, 600k rounds); the server never sees the password. Holds everything under `Clio/`, not settings or the API key |
 
 The server **must** read your notes in plain text to search them and to let the AI use them. End-to-end encryption and
 an AI that reads your notes cannot both hold.

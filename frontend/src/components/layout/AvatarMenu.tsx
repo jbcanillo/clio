@@ -1,4 +1,4 @@
-import { Bell, DatabaseBackup, Download, Lock, Menu, Moon, RotateCcw, Settings, Sun } from 'lucide-react';
+import { Bell, DatabaseBackup, Download, Lock, Menu, Moon, Settings, Sun } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clearToken } from '../../lib/api';
@@ -83,8 +83,7 @@ export default function AvatarMenu({ onEnableNotifications, onInstall }: AvatarM
         <div role="menu" aria-label="Account" className="absolute right-0 top-11 z-50 w-56 rounded-2xl border border-hairline bg-card p-1.5 shadow-modal">
           {item('Lock', <Lock size={16} />, lock)}
           {item('Settings', <Settings size={16} />, () => navigate('/settings'))}
-          {item('Backup', <DatabaseBackup size={16} />, () => navigate('/backup'))}
-          {item('Restore', <RotateCcw size={16} />, () => navigate('/restore'))}
+          {item('Backup & restore', <DatabaseBackup size={16} />, () => navigate('/backup'))}
           {item(theme === 'clio-dark' ? 'Light mode' : 'Dark mode', theme === 'clio-dark' ? <Sun size={16} /> : <Moon size={16} />, toggleTheme)}
           {canNotify && onEnableNotifications && item('Enable notifications', <Bell size={16} />, onEnableNotifications)}
           {onInstall && item('Install app', <Download size={16} />, onInstall)}

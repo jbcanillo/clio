@@ -2,14 +2,9 @@
 
 ![Clio Banner](banner.png)
 
-A self-hosted, containerized, mobile-first Progressive Web App for your diary, notes and reminders. You talk to Clio in a chat that answers with real interface (reminder cards, mood charts, checklists, a daily check-in form), it nudges you every day to write something down, and everything it knows lives as **plain markdown in an Obsidian vault** that you own. Clio (formerly numdum) is a sibling of **Mnemosyne** (memory/RAG) and **Echo** (voice).
+A self-hosted, containerized, mobile-first Progressive Web App for your diary, notes and reminders. You talk to Clio in a chat that answers with real interface (reminder cards, mood charts, checklists, a daily check-in form), it nudges you every day to write something down, and everything it knows lives as **plain markdown in an Obsidian vault** that you own.
 
 Your notes stay on your own server. The only outside calls are the chat (sent to OpenRouter and the model you choose) and Web Push notifications (sent through your browser's push service).
-
-Design: [docs/superpowers/specs/2026-11-23-clio-design.md](docs/superpowers/specs/2026-11-23-clio-design.md) ·
-Plan: [docs/superpowers/plans/2026-11-23-clio.md](docs/superpowers/plans/2026-11-23-clio.md) ·
-Privacy: [docs/PRIVACY.md](docs/PRIVACY.md)
-
 ---
 
 ## Table of Contents
@@ -114,7 +109,7 @@ graph TB
 
 ## Privacy & Safety
 
-Clio holds your diary, so it is private by default. Full details: [docs/PRIVACY.md](docs/PRIVACY.md).
+Clio holds your diary/journal, so it is private by default. Full details: [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ### Safeguards
 
@@ -488,7 +483,9 @@ The API refuses to start if `CLIO_PASSWORD` is missing, `SECRET_KEY` is shorter 
 BACKUP_PASSPHRASE='long passphrase' scripts/backup.sh ~/clio-backups
 ```
 
-Writes one encrypted file with the `vault` and `data` volumes. Restore and details: [scripts/BACKUP_README.md](scripts/BACKUP_README.md). Your notes are also plain markdown, so a Git remote or Syncthing copy of the vault is a second backup.
+Writes one encrypted file with the `vault` and `data` volumes. Restore and details: [scripts/BACKUP_README.md](scripts/BACKUP_README.md).
+
+**From the app:** *Menu → Backup & restore* (also a panel in Settings) downloads one file with everything under `Clio/` in the vault: reminders, notes, diary days, journal entries, photos and Clio's profile memory. It is encrypted in the browser (AES-256-GCM, PBKDF2-SHA256 with 600,000 rounds) with a password you choose; the server never sees it. Restoring shows what the file holds first, then either **replaces** (Clio's files match the backup; photos are never deleted) or **merges**. Settings and the API key are not included. Older app backups (reminders and journal only) can still be restored. Your notes are also plain markdown, so a Git remote or Syncthing copy of the vault is a second backup.
 
 ---
 

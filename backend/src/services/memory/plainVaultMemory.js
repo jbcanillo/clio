@@ -1,6 +1,6 @@
 import MiniSearch from 'minisearch';
 
-import { titleOf, dateOf, snippetOf } from './shared.js';
+import { titleOf, dateOf, snippetOf, searchText } from './shared.js';
 
 /** Full-text search over Clio/** in the vault. Index is rebuilt on reindex() or after ttlMs. */
 export function createPlainVaultMemory({ vault, ttlMs = 2000, now = () => Date.now() }) {
@@ -18,7 +18,7 @@ export function createPlainVaultMemory({ vault, ttlMs = 2000, now = () => Date.n
         id: path,
         path,
         title: titleOf(f),
-        body: f.body,
+        body: searchText(f),
         private: f.frontmatter.private === true,
         date: dateOf(f),
       };

@@ -31,12 +31,11 @@ export function ImportLegacy() {
   }
 
   return (
-    <section className="space-y-2">
-      <h3 className="font-medium">Import from the old numdum</h3>
+    <div className="space-y-2">
       <p className="text-xs opacity-70">Copies reminders and journal entries stored in this browser into your vault. Running it again does not create duplicates.</p>
       <button type="button" className="btn btn-sm" onClick={run} disabled={busy}>Import old data</button>
       {message && <p role="status" className="text-sm">{message}</p>}
       {error && <p role="alert" className="text-error text-sm">{error}</p>}
-    </section>
+    </div>
   );
 }

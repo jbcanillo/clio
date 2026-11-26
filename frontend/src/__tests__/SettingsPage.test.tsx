@@ -28,9 +28,24 @@ describe('SettingsPage', () => {
     const morning = await screen.findByLabelText(/morning reminder/i);
     await userEvent.clear(morning);
     await userEvent.type(morning, '07:30');
-    await userEvent.click(screen.getByRole('button', { name: /save settings/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save check-in settings/i }));
     const put = apiFetch.mock.calls.find(([, init]) => init?.method === 'PUT');
-    expect(put?.[1].json).toMatchObject({ timezone: 'Asia/Manila', checkinTimes: { morning: '07:30', evening: '20:30' } });
-    expect(put?.[1].json).not.toHaveProperty('openrouterKey');
+    expect(put?.[1].json).toEqual({ timezone: 'Asia/Manila', checkinTimes: { morning: '07:30', evening: '20:30' } });
+  });
+  it('the AI panel saves only the key and model', async () => {
+    render(<SettingsPage />);
+    await userEvent.type(await screen.findByLabelText(/openrouter api key/i), 'sk-or-new');
+    await userEvent.click(screen.getByRole('button', { name: /save ai settings/i }));
+    const put = apiFetch.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(put?.[1].json).toEqual({ openrouterModel: 'openai/gpt-4o-mini', openrouterKey: 'sk-or-new' });
+  });
+  it('shows each area as its own panel, including backup & restore', async () => {
+    render(<SettingsPage />);
+    await screen.findByText(/key saved/i);
+    for (const name of ['AI (OpenRouter)', 'Daily check-ins', 'Backup & restore', 'Import from the old numdum']) {
+      expect(screen.getByRole('region', { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: /download backup/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open backup/i })).toBeInTheDocument();
   });
 });

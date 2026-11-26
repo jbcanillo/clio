@@ -44,6 +44,11 @@ describe('PeoplePicker', () => {
     expect(onChange).toHaveBeenCalledWith([{ name: 'Ben', phone: '+1 555' }, { name: '+2 666', phone: '+2 666' }]);
   });
 
+  it('shows both the phone and the email of an added person', () => {
+    render(<PeoplePicker value={[{ name: 'Ana', phone: '0917', email: 'ana@example.com' }]} onChange={() => {}} />);
+    expect(screen.getByText('0917 · ana@example.com')).toBeInTheDocument();
+  });
+
   it('single mode keeps one person and hides the add buttons once chosen', () => {
     render(<PeoplePicker single value={[{ name: 'Ana' }]} onChange={() => {}} />);
     expect(screen.getByText('Ana')).toBeInTheDocument();

@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AvatarMenu, { type AvatarMenuProps } from './AvatarMenu';
 
 export type HeaderStatus = 'online' | 'offline' | 'syncing';
@@ -16,6 +18,7 @@ export interface AppHeaderProps extends AvatarMenuProps {
 }
 
 export default function AppHeader({ status, children, onEnableNotifications, onInstall }: AppHeaderProps) {
+  const navigate = useNavigate();
   return (
     <header className="glass relative z-30 shrink-0 border-b border-hairline">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
@@ -33,6 +36,15 @@ export default function AppHeader({ status, children, onEnableNotifications, onI
         </div>
         <div className="flex items-center gap-2">
           {children}
+          <button
+            type="button"
+            aria-label="Privacy notice"
+            title="Privacy notice"
+            onClick={() => navigate('/privacy')}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-inset focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+          >
+            <ShieldCheck aria-hidden="true" size={22} />
+          </button>
           <AvatarMenu onEnableNotifications={onEnableNotifications} onInstall={onInstall} />
         </div>
       </div>
